@@ -1,0 +1,920 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>🕵️ นักสืบปริศนา – Mystery Classroom</title>
+  <script src="https://www.gstatic.com/antigravity/web/dev/tailwindcss.min.js"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600;700&display=swap');
+
+    * { box-sizing: border-box; }
+
+    body {
+      font-family: 'Sarabun', sans-serif;
+      background: var(--background);
+      color: var(--foreground);
+      margin: 0;
+      min-height: 100vh;
+    }
+
+    .screen { display: none; min-height: 100vh; }
+    .screen.active { display: flex; flex-direction: column; }
+
+    /* Cinematic intro */
+    .film-grain {
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+    }
+
+    .typewriter { overflow: hidden; border-right: 2px solid #f59e0b; white-space: nowrap; animation: typing 2s steps(40,end), blink 0.75s step-end infinite; }
+    @keyframes typing { from { width: 0 } to { width: 100% } }
+    @keyframes blink { from, to { border-color: transparent } 50% { border-color: #f59e0b; } }
+
+    .evidence-card {
+      transition: all 0.3s ease;
+      cursor: pointer;
+      position: relative;
+    }
+    .evidence-card:hover { transform: translateY(-4px); box-shadow: 0 8px 24px rgba(0,0,0,0.2); }
+    .evidence-card.collected { border-color: #10b981 !important; }
+    .evidence-card .badge {
+      position: absolute;
+      top: -8px; right: -8px;
+      background: #10b981;
+      color: white;
+      border-radius: 50%;
+      width: 24px; height: 24px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 14px;
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+    .evidence-card.collected .badge { opacity: 1; }
+
+    .notebook-line { border-bottom: 1px dashed var(--border); margin-bottom: 8px; }
+
+    .leaderboard-row { transition: all 0.3s; }
+    .leaderboard-row:first-child { background: linear-gradient(90deg, rgba(251,191,36,0.15), transparent); }
+    .leaderboard-row:nth-child(2) { background: linear-gradient(90deg, rgba(156,163,175,0.1), transparent); }
+    .leaderboard-row:nth-child(3) { background: linear-gradient(90deg, rgba(180,83,9,0.1), transparent); }
+
+    .progress-bar { transition: width 1s ease; }
+
+    .tab-btn { transition: all 0.2s; }
+    .tab-btn.active { background: var(--primary); color: var(--primary-foreground); }
+
+    .modal-overlay {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.7);
+      display: flex; align-items: center; justify-content: center;
+      z-index: 100;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s;
+    }
+    .modal-overlay.open { opacity: 1; pointer-events: all; }
+    .modal-box { transform: scale(0.9); transition: transform 0.3s; max-width: 90vw; width: 520px; }
+    .modal-overlay.open .modal-box { transform: scale(1); }
+
+    .pulse-ring {
+      animation: pulse-ring 2s ease-out infinite;
+    }
+    @keyframes pulse-ring {
+      0% { transform: scale(1); opacity: 1; }
+      100% { transform: scale(1.4); opacity: 0; }
+    }
+
+    .clue-glow { box-shadow: 0 0 20px rgba(251, 191, 36, 0.4); }
+
+    .star-spin { animation: star-appear 0.5s ease forwards; }
+    @keyframes star-appear { from { transform: scale(0) rotate(-180deg); opacity: 0; } to { transform: scale(1) rotate(0deg); opacity: 1; } }
+
+    .confetti-piece {
+      position: fixed;
+      width: 10px; height: 10px;
+      animation: fall 3s ease-out forwards;
+      border-radius: 2px;
+    }
+    @keyframes fall {
+      0% { transform: translateY(-50px) rotate(0deg); opacity: 1; }
+      100% { transform: translateY(110vh) rotate(720deg); opacity: 0; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ============================================================
+     SCREEN 0: TEAM SETUP
+     ============================================================ -->
+<div id="screen-team" class="screen active" style="background: var(--background);">
+  <div class="flex flex-col items-center justify-center min-h-screen p-6">
+    <div class="w-full max-w-md">
+      <!-- Logo -->
+      <div class="text-center mb-8">
+        <div class="text-6xl mb-3">🕵️</div>
+        <h1 class="text-3xl font-bold" style="color: var(--foreground);">นักสืบปริศนา</h1>
+        <p class="text-lg mt-1" style="color: #f59e0b;">Mystery Classroom</p>
+        <div class="mt-2 h-px w-32 mx-auto" style="background: var(--border);"></div>
+      </div>
+
+      <!-- Team name -->
+      <div class="rounded-2xl p-6 mb-4" style="background: var(--card); border: 1px solid var(--border);">
+        <label class="block text-sm font-semibold mb-2" style="color: var(--muted-foreground);">🏷️ ชื่อทีมของคุณ</label>
+        <input id="team-name-input" type="text" placeholder="เช่น ทีมอินทรี, กลุ่ม 1..."
+          class="w-full rounded-lg px-4 py-3 text-base font-semibold outline-none transition"
+          style="background: var(--background); border: 2px solid var(--border); color: var(--foreground);"
+          maxlength="30"
+          onfocus="this.style.borderColor='#f59e0b'"
+          onblur="this.style.borderColor='var(--border)'"
+        />
+        <!-- Preset team names -->
+        <div class="flex flex-wrap gap-2 mt-3">
+          <span class="text-xs" style="color: var(--muted-foreground);">ลองเลือก:</span>
+          <button onclick="setTeamName('🦅 ทีมอินทรี')" class="text-xs px-2 py-1 rounded-full cursor-pointer hover:opacity-80" style="background: var(--accent); color: var(--foreground); border: 1px solid var(--border);">🦅 ทีมอินทรี</button>
+          <button onclick="setTeamName('🐯 ทีมเสือ')" class="text-xs px-2 py-1 rounded-full cursor-pointer hover:opacity-80" style="background: var(--accent); color: var(--foreground); border: 1px solid var(--border);">🐯 ทีมเสือ</button>
+          <button onclick="setTeamName('🐲 ทีมมังกร')" class="text-xs px-2 py-1 rounded-full cursor-pointer hover:opacity-80" style="background: var(--accent); color: var(--foreground); border: 1px solid var(--border);">🐲 ทีมมังกร</button>
+          <button onclick="setTeamName('🦁 ทีมสิงห์')" class="text-xs px-2 py-1 rounded-full cursor-pointer hover:opacity-80" style="background: var(--accent); color: var(--foreground); border: 1px solid var(--border);">🦁 ทีมสิงห์</button>
+        </div>
+      </div>
+
+      <!-- Member count -->
+      <div class="rounded-2xl p-6 mb-6" style="background: var(--card); border: 1px solid var(--border);">
+        <label class="block text-sm font-semibold mb-3" style="color: var(--muted-foreground);">👥 จำนวนสมาชิกในทีม</label>
+        <div class="flex gap-3 justify-center">
+          <button onclick="setMemberCount(this, 2)" class="member-btn w-12 h-12 rounded-xl font-bold text-lg transition hover:scale-105" style="background: var(--accent); border: 2px solid var(--border); color: var(--foreground);">2</button>
+          <button onclick="setMemberCount(this, 3)" class="member-btn w-12 h-12 rounded-xl font-bold text-lg transition hover:scale-105" style="background: var(--accent); border: 2px solid var(--border); color: var(--foreground);">3</button>
+          <button onclick="setMemberCount(this, 4)" class="member-btn w-12 h-12 rounded-xl font-bold text-lg transition hover:scale-105" style="background: var(--accent); border: 2px solid var(--border); color: var(--foreground);">4</button>
+          <button onclick="setMemberCount(this, 5)" class="member-btn w-12 h-12 rounded-xl font-bold text-lg transition hover:scale-105" style="background: var(--accent); border: 2px solid var(--border); color: var(--foreground);">5</button>
+          <button onclick="setMemberCount(this, 6)" class="member-btn w-12 h-12 rounded-xl font-bold text-lg transition hover:scale-105" style="background: var(--accent); border: 2px solid var(--border); color: var(--foreground);">6</button>
+        </div>
+      </div>
+
+      <!-- Start button -->
+      <button onclick="startGame()" class="w-full py-4 rounded-2xl font-bold text-xl text-white transition hover:opacity-90 active:scale-95" style="background: linear-gradient(135deg, #d97706, #f59e0b);">
+        🔍 รับคดีใหม่!
+      </button>
+
+      <p class="text-center text-xs mt-4" style="color: var(--muted-foreground);">คดีที่ 01 • ความลับของคอมพิวเตอร์ช้า</p>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     SCREEN 1: STORY / CASE INTRO
+     ============================================================ -->
+<div id="screen-story" class="screen" style="background: #0f0f0f;">
+  <div class="flex flex-col items-center justify-center min-h-screen p-6">
+    <div class="w-full max-w-xl">
+
+      <!-- Case file header -->
+      <div class="text-center mb-6">
+        <div class="inline-block px-3 py-1 rounded-full text-xs font-bold mb-3" style="background: rgba(239,68,68,0.15); color: #ef4444; border: 1px solid rgba(239,68,68,0.3);">
+          🔴 คดีใหม่ถูกเปิด
+        </div>
+        <h2 class="text-2xl font-bold" style="color: #f59e0b;">คดีที่ 01</h2>
+        <h1 class="text-xl font-bold mt-1 text-white">"ใครทำให้คอมพิวเตอร์ช้าลง?"</h1>
+      </div>
+
+      <!-- Story card -->
+      <div class="rounded-2xl p-6 mb-6 relative overflow-hidden" style="background: #1a1a1a; border: 1px solid #333;">
+        <div class="absolute top-0 left-0 w-full h-1" style="background: linear-gradient(90deg, #d97706, #f59e0b, #d97706);"></div>
+
+        <div class="flex items-start gap-3 mb-4">
+          <div class="text-4xl">🖥️</div>
+          <div>
+            <p class="font-bold text-white text-lg">รายงานเหตุการณ์</p>
+            <p class="text-xs" style="color: #888;">วันที่ 1 ตุลาคม 2567 • ห้องคอมพิวเตอร์ โรงเรียน ABC</p>
+          </div>
+        </div>
+
+        <div class="space-y-3 text-base leading-relaxed" style="color: #ccc;">
+          <p>🚨 <strong style="color: #f59e0b;">เหตุการณ์:</strong> คอมพิวเตอร์ในห้อง IT ทำงานช้ามากผิดปกติ นักเรียนร้องเรียนว่าไม่สามารถทำงานได้</p>
+          <p>📋 <strong style="color: #f59e0b;">ข้อมูลเบื้องต้น:</strong> เครื่องทำงานมาตั้งแต่เช้า ไม่มีการติดตั้งโปรแกรมใหม่ แต่สังเกตว่าพัดลมระบายความร้อนดังผิดปกติ</p>
+          <p>🎯 <strong style="color: #f59e0b;">ภารกิจ:</strong> ทีมนักสืบต้องค้นหาหลักฐาน วิเคราะห์สาเหตุ และสรุปว่าอะไรทำให้คอมพิวเตอร์ช้าลง</p>
+        </div>
+      </div>
+
+      <!-- Team badge -->
+      <div class="rounded-xl px-4 py-3 mb-6 flex items-center gap-3" style="background: rgba(245,158,11,0.1); border: 1px solid rgba(245,158,11,0.3);">
+        <div class="text-2xl">🏅</div>
+        <div>
+          <p class="text-sm" style="color: #888;">ทีมที่ได้รับมอบหมาย</p>
+          <p class="font-bold text-lg" id="story-team-name" style="color: #f59e0b;">-</p>
+        </div>
+        <div class="ml-auto text-right">
+          <p class="text-xs" style="color: #888;">คะแนนเริ่มต้น</p>
+          <p class="font-bold text-2xl text-white" id="story-score">0</p>
+        </div>
+      </div>
+
+      <!-- Timer -->
+      <div class="text-center mb-6">
+        <div class="inline-flex items-center gap-2 px-4 py-2 rounded-full" style="background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.3);">
+          <span class="text-red-400">⏱</span>
+          <span class="font-mono font-bold text-xl" id="timer-display" style="color: #ef4444;">25:00</span>
+          <span class="text-xs" style="color: #888;">เวลาที่เหลือ</span>
+        </div>
+      </div>
+
+      <button onclick="goToEvidence()" class="w-full py-4 rounded-2xl font-bold text-xl text-white transition hover:opacity-90 active:scale-95" style="background: linear-gradient(135deg, #d97706, #f59e0b);">
+        🔍 เริ่มค้นหาหลักฐาน!
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     SCREEN 2: EVIDENCE COLLECTION
+     ============================================================ -->
+<div id="screen-evidence" class="screen" style="background: var(--background);">
+  <div class="p-4 max-w-2xl mx-auto w-full">
+    <!-- Top bar -->
+    <div class="flex items-center justify-between mb-4">
+      <div>
+        <h2 class="font-bold text-lg" style="color: var(--foreground);">📂 ห้องหลักฐาน</h2>
+        <p class="text-xs" style="color: var(--muted-foreground);">คลิกหลักฐานเพื่อตรวจสอบ</p>
+      </div>
+      <div class="flex items-center gap-3">
+        <div class="text-right">
+          <p class="text-xs" style="color: var(--muted-foreground);">เก็บแล้ว</p>
+          <p class="font-bold" id="evidence-count" style="color: #10b981;">0/6</p>
+        </div>
+        <div class="font-mono font-bold px-3 py-1 rounded-lg text-sm" id="timer-ev" style="background: rgba(239,68,68,0.1); color: #ef4444;">25:00</div>
+      </div>
+    </div>
+
+    <!-- Progress bar -->
+    <div class="rounded-full h-2 mb-5 overflow-hidden" style="background: var(--accent);">
+      <div id="ev-progress" class="progress-bar h-2 rounded-full" style="width: 0%; background: #10b981;"></div>
+    </div>
+
+    <!-- Evidence grid -->
+    <div class="grid grid-cols-2 gap-3 mb-4" id="evidence-grid">
+      <!-- Generated by JS -->
+    </div>
+
+    <!-- Navigation buttons -->
+    <div class="flex gap-3 mt-4">
+      <button onclick="goToNotebook()" class="flex-1 py-3 rounded-xl font-semibold transition hover:opacity-80 active:scale-95" style="background: var(--card); border: 1px solid var(--border); color: var(--foreground);">
+        📓 สมุดไขคดี
+      </button>
+      <button onclick="goToLeaderboard()" class="flex-1 py-3 rounded-xl font-semibold transition hover:opacity-80 active:scale-95" style="background: var(--card); border: 1px solid var(--border); color: var(--foreground);">
+        🏆 คะแนน
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     SCREEN 3: DETECTIVE NOTEBOOK
+     ============================================================ -->
+<div id="screen-notebook" class="screen" style="background: var(--background);">
+  <div class="p-4 max-w-2xl mx-auto w-full">
+    <!-- Header -->
+    <div class="flex items-center justify-between mb-4">
+      <div class="flex items-center gap-2">
+        <button onclick="goToEvidence()" class="text-xl hover:opacity-70">←</button>
+        <div>
+          <h2 class="font-bold text-lg" style="color: var(--foreground);">📓 สมุดไขคดี</h2>
+          <p class="text-xs" style="color: var(--muted-foreground);">บันทึกข้อสรุปของทีมคุณ</p>
+        </div>
+      </div>
+      <div class="font-mono font-bold px-3 py-1 rounded-lg text-sm" id="timer-nb" style="background: rgba(239,68,68,0.1); color: #ef4444;">25:00</div>
+    </div>
+
+    <!-- Tabs -->
+    <div class="flex gap-2 mb-4">
+      <button onclick="switchTab('clues')" id="tab-clues" class="tab-btn flex-1 py-2 rounded-xl text-sm font-semibold transition active" style="background: var(--primary); color: var(--primary-foreground);">🔍 หลักฐานที่เก็บ</button>
+      <button onclick="switchTab('analysis')" id="tab-analysis" class="tab-btn flex-1 py-2 rounded-xl text-sm font-semibold transition" style="background: var(--card); border: 1px solid var(--border); color: var(--foreground);">🧠 วิเคราะห์</button>
+      <button onclick="switchTab('conclusion')" id="tab-conclusion" class="tab-btn flex-1 py-2 rounded-xl text-sm font-semibold transition" style="background: var(--card); border: 1px solid var(--border); color: var(--foreground);">✅ ข้อสรุป</button>
+    </div>
+
+    <!-- Tab: Clues -->
+    <div id="tab-content-clues">
+      <div id="collected-evidence-list" class="space-y-2">
+        <p class="text-center py-8 text-sm" style="color: var(--muted-foreground);">ยังไม่มีหลักฐานที่เก็บได้<br>กลับไปค้นหาในห้องหลักฐาน</p>
+      </div>
+    </div>
+
+    <!-- Tab: Analysis -->
+    <div id="tab-content-analysis" class="hidden">
+      <div class="rounded-xl p-4 mb-3" style="background: var(--card); border: 1px solid var(--border);">
+        <p class="text-sm font-semibold mb-2" style="color: var(--foreground);">🔗 หลักฐานใดที่เชื่อมกัน?</p>
+        <textarea id="analysis-links" placeholder="เช่น CPU ทำงาน 98% เชื่อมกับอุณหภูมิสูง เพราะ..." class="w-full rounded-lg p-3 text-sm outline-none resize-none" rows="3" style="background: var(--background); border: 1px solid var(--border); color: var(--foreground);"></textarea>
+      </div>
+      <div class="rounded-xl p-4 mb-3" style="background: var(--card); border: 1px solid var(--border);">
+        <p class="text-sm font-semibold mb-2" style="color: var(--foreground);">🤔 ทีมคิดว่าสาเหตุหลักคืออะไร?</p>
+        <textarea id="analysis-cause" placeholder="เช่น ปัญหาน่าจะมาจาก..." class="w-full rounded-lg p-3 text-sm outline-none resize-none" rows="3" style="background: var(--background); border: 1px solid var(--border); color: var(--foreground);"></textarea>
+      </div>
+    </div>
+
+    <!-- Tab: Conclusion -->
+    <div id="tab-content-conclusion" class="hidden">
+      <div class="rounded-xl p-4 mb-3" style="background: var(--card); border: 1px solid var(--border);">
+        <p class="text-sm font-semibold mb-2" style="color: var(--foreground);">🕵️ สรุปคำตอบของทีม</p>
+        <p class="text-xs mb-3" style="color: var(--muted-foreground);">เกิดอะไรขึ้นกับคอมพิวเตอร์? และทำไม?</p>
+        <textarea id="conclusion-text" placeholder="เขียนสรุปคำตอบของทีมที่นี่..." class="w-full rounded-lg p-3 text-sm outline-none resize-none" rows="4" style="background: var(--background); border: 1px solid var(--border); color: var(--foreground);"></textarea>
+      </div>
+
+      <!-- Suspects selection -->
+      <div class="rounded-xl p-4 mb-4" style="background: var(--card); border: 1px solid var(--border);">
+        <p class="text-sm font-semibold mb-3" style="color: var(--foreground);">🎯 ระบุสาเหตุหลัก</p>
+        <div class="grid grid-cols-1 gap-2" id="suspect-list">
+          <!-- Generated by JS -->
+        </div>
+      </div>
+
+      <button onclick="submitAnswer()" class="w-full py-4 rounded-2xl font-bold text-lg text-white transition hover:opacity-90 active:scale-95" style="background: linear-gradient(135deg, #059669, #10b981);">
+        🎤 ส่งคำตอบและดูเฉลย!
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     SCREEN 4: LEADERBOARD
+     ============================================================ -->
+<div id="screen-leaderboard" class="screen" style="background: var(--background);">
+  <div class="p-4 max-w-xl mx-auto w-full">
+    <div class="flex items-center gap-2 mb-6">
+      <button onclick="goToEvidence()" class="text-xl hover:opacity-70">←</button>
+      <h2 class="font-bold text-xl" style="color: var(--foreground);">🏆 Leaderboard</h2>
+    </div>
+
+    <!-- Your team score -->
+    <div class="rounded-2xl p-5 mb-5 text-center relative overflow-hidden" style="background: linear-gradient(135deg, rgba(245,158,11,0.15), rgba(217,119,6,0.1)); border: 2px solid rgba(245,158,11,0.4);">
+      <div class="absolute top-0 left-0 w-full h-1" style="background: linear-gradient(90deg, #d97706, #f59e0b, #d97706);"></div>
+      <p class="text-sm mb-1" style="color: var(--muted-foreground);">คะแนนของคุณ</p>
+      <p class="font-bold text-2xl mb-1" id="lb-team-name" style="color: #f59e0b;">-</p>
+      <p class="font-bold text-5xl" id="lb-score" style="color: var(--foreground);">0</p>
+      <p class="text-xs mt-1" style="color: var(--muted-foreground);">คะแนน</p>
+    </div>
+
+    <!-- Simulated leaderboard -->
+    <div class="rounded-2xl overflow-hidden mb-5" style="background: var(--card); border: 1px solid var(--border);">
+      <div class="px-4 py-3" style="border-bottom: 1px solid var(--border);">
+        <p class="font-semibold text-sm" style="color: var(--muted-foreground);">อันดับทีมทั้งหมด</p>
+      </div>
+      <div id="leaderboard-list" class="divide-y" style="border-color: var(--border);">
+        <!-- Generated by JS -->
+      </div>
+    </div>
+
+    <!-- Scoring rules -->
+    <div class="rounded-xl p-4" style="background: var(--card); border: 1px solid var(--border);">
+      <p class="font-semibold text-sm mb-3" style="color: var(--foreground);">⭐ วิธีได้คะแนน</p>
+      <div class="space-y-2 text-xs" style="color: var(--muted-foreground);">
+        <div class="flex justify-between"><span>🔍 เก็บหลักฐานแต่ละชิ้น</span><span class="font-bold" style="color: #10b981;">+10 คะแนน</span></div>
+        <div class="flex justify-between"><span>✅ คำตอบถูกต้อง</span><span class="font-bold" style="color: #10b981;">+50 คะแนน</span></div>
+        <div class="flex justify-between"><span>⏱ ทำเสร็จก่อนเวลา (ต่อนาที)</span><span class="font-bold" style="color: #10b981;">+5 คะแนน</span></div>
+        <div class="flex justify-between"><span>📝 เขียนวิเคราะห์ครบถ้วน</span><span class="font-bold" style="color: #10b981;">+20 คะแนน</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     SCREEN 5: REVEAL / ANSWER
+     ============================================================ -->
+<div id="screen-reveal" class="screen" style="background: var(--background);">
+  <div class="p-4 max-w-2xl mx-auto w-full">
+    <!-- Header -->
+    <div class="text-center mb-6">
+      <div class="text-5xl mb-2">🎉</div>
+      <h2 class="text-2xl font-bold" style="color: var(--foreground);">เฉลยคดี!</h2>
+      <p class="text-sm mt-1" style="color: var(--muted-foreground);">มาดูกันว่าเกิดอะไรขึ้นจริง ๆ</p>
+    </div>
+
+    <!-- Score result -->
+    <div class="rounded-2xl p-5 text-center mb-5 relative overflow-hidden" id="result-card">
+      <!-- Content generated by JS -->
+    </div>
+
+    <!-- Correct answer -->
+    <div class="rounded-2xl p-5 mb-4" style="background: rgba(16,185,129,0.08); border: 2px solid rgba(16,185,129,0.3);">
+      <div class="flex items-center gap-2 mb-3">
+        <span class="text-2xl">🔓</span>
+        <h3 class="font-bold text-lg" style="color: #10b981;">คำตอบที่ถูกต้อง</h3>
+      </div>
+      <p class="font-bold mb-2" style="color: var(--foreground);">สาเหตุ: CPU ทำงานหนักเกินไปร่วมกับการระบายความร้อนที่ไม่ดี</p>
+      <p class="text-sm leading-relaxed" style="color: var(--muted-foreground);">
+        คอมพิวเตอร์ช้าลงเพราะมีโปรแกรม Background ที่กิน CPU สูงถึง 98% ทำให้อุณหภูมิ CPU ขึ้นสูง จนระบบ Thermal Throttling เข้ามาลดความเร็ว CPU โดยอัตโนมัติเพื่อป้องกันความเสียหาย ประกอบกับ RAM เต็มจาก Tab เปิดค้างจำนวนมาก ทำให้ระบบต้องใช้ Virtual Memory ซึ่งช้ากว่า RAM จริงมาก
+      </p>
+    </div>
+
+    <!-- Lesson summary -->
+    <div class="rounded-2xl p-5 mb-4" style="background: var(--card); border: 1px solid var(--border);">
+      <h3 class="font-bold mb-4" style="color: var(--foreground);">📚 สิ่งที่เรียนรู้จากคดีนี้</h3>
+      <div class="space-y-3">
+        <div class="flex items-start gap-3">
+          <span class="text-xl mt-0.5">🧠</span>
+          <div>
+            <p class="font-semibold text-sm" style="color: var(--foreground);">CPU (Central Processing Unit)</p>
+            <p class="text-xs leading-relaxed" style="color: var(--muted-foreground);">หน่วยประมวลผลกลาง เมื่อ CPU ทำงานหนักเกิน 90% ระบบจะช้าลงอย่างเห็นได้ชัด</p>
+          </div>
+        </div>
+        <div class="flex items-start gap-3">
+          <span class="text-xl mt-0.5">💾</span>
+          <div>
+            <p class="font-semibold text-sm" style="color: var(--foreground);">RAM (Random Access Memory)</p>
+            <p class="text-xs leading-relaxed" style="color: var(--muted-foreground);">หน่วยความจำชั่วคราว เมื่อ RAM เต็ม ระบบจะสลับไปใช้ Virtual Memory บน HDD ซึ่งช้ากว่ามาก</p>
+          </div>
+        </div>
+        <div class="flex items-start gap-3">
+          <span class="text-xl mt-0.5">🌡️</span>
+          <div>
+            <p class="font-semibold text-sm" style="color: var(--foreground);">Thermal Throttling</p>
+            <p class="text-xs leading-relaxed" style="color: var(--muted-foreground);">เมื่อ CPU ร้อนเกินไป ระบบจะลดความเร็วอัตโนมัติเพื่อป้องกันความเสียหาย</p>
+          </div>
+        </div>
+        <div class="flex items-start gap-3">
+          <span class="text-xl mt-0.5">⚡</span>
+          <div>
+            <p class="font-semibold text-sm" style="color: var(--foreground);">Cache Memory</p>
+            <p class="text-xs leading-relaxed" style="color: var(--muted-foreground);">หน่วยความจำเร็วพิเศษใน CPU ช่วยลดเวลาดึงข้อมูลจาก RAM</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Your answer review -->
+    <div class="rounded-2xl p-5 mb-6" style="background: var(--card); border: 1px solid var(--border);">
+      <h3 class="font-bold mb-3" style="color: var(--foreground);">📝 คำตอบของทีมคุณ</h3>
+      <p class="text-sm italic" id="review-conclusion" style="color: var(--muted-foreground);">-</p>
+    </div>
+
+    <!-- Play again -->
+    <button onclick="playAgain()" class="w-full py-4 rounded-2xl font-bold text-xl text-white transition hover:opacity-90 active:scale-95" style="background: linear-gradient(135deg, #d97706, #f59e0b);">
+      🔄 เล่นใหม่อีกครั้ง
+    </button>
+  </div>
+</div>
+
+<!-- ============================================================
+     EVIDENCE MODAL
+     ============================================================ -->
+<div id="evidence-modal" class="modal-overlay">
+  <div class="modal-box rounded-2xl p-6" style="background: var(--card); border: 1px solid var(--border);">
+    <div class="flex items-start gap-3 mb-4">
+      <div id="modal-icon" class="text-4xl">🔍</div>
+      <div class="flex-1">
+        <h3 id="modal-title" class="font-bold text-lg" style="color: var(--foreground);">หลักฐาน</h3>
+        <p id="modal-type" class="text-xs" style="color: var(--muted-foreground);">ประเภท: -</p>
+      </div>
+    </div>
+    <div id="modal-content" class="rounded-xl p-4 mb-4 text-sm leading-relaxed" style="background: var(--background); border: 1px solid var(--border); color: var(--foreground);">
+    </div>
+    <div id="modal-clue" class="rounded-xl p-3 mb-4 text-sm" style="background: rgba(245,158,11,0.1); border: 1px solid rgba(245,158,11,0.3); color: #f59e0b;">
+    </div>
+    <div class="flex gap-3">
+      <button onclick="closeModal()" class="flex-1 py-3 rounded-xl font-semibold transition hover:opacity-80" style="background: var(--background); border: 1px solid var(--border); color: var(--foreground);">
+        ปิด
+      </button>
+      <button id="collect-btn" onclick="collectEvidence()" class="flex-1 py-3 rounded-xl font-semibold text-white transition hover:opacity-90" style="background: #10b981;">
+        ✓ เก็บหลักฐาน (+10 คะแนน)
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     JAVASCRIPT
+     ============================================================ -->
+<script>
+  // ─── STATE ────────────────────────────────────────────────
+  let state = {
+    teamName: '',
+    memberCount: 4,
+    score: 0,
+    collectedEvidence: new Set(),
+    timerSeconds: 25 * 60,
+    timerInterval: null,
+    activeModal: null,
+    selectedSuspect: null,
+    gameStarted: false,
+    gameOver: false,
+  };
+
+  // Simulated other teams for leaderboard
+  const otherTeams = [
+    { name: '🦁 ทีมสิงห์', score: 95 },
+    { name: '🐯 ทีมเสือ', score: 75 },
+    { name: '🐲 ทีมมังกร', score: 60 },
+    { name: '🦋 ทีมผีเสื้อ', score: 45 },
+  ];
+
+  // ─── EVIDENCE DATA ─────────────────────────────────────────
+  const evidenceList = [
+    {
+      id: 'cpu',
+      icon: '🖥️',
+      title: 'รายงาน CPU Usage',
+      type: 'ข้อมูลระบบ',
+      content: 'Task Manager แสดงว่า CPU ทำงานที่ 98% อย่างต่อเนื่อง มีโปรแกรม "svchost.exe" ใช้งาน CPU สูงถึง 70% โดยไม่ทราบสาเหตุ',
+      clue: '💡 เบาะแส: CPU ที่ทำงานหนักอาจทำให้ระบบช้า และยังทำให้เกิดความร้อนสูงด้วย',
+    },
+    {
+      id: 'ram',
+      icon: '💾',
+      title: 'สถานะ RAM',
+      type: 'ข้อมูลระบบ',
+      content: 'RAM 8GB ถูกใช้ไปแล้ว 7.8GB (98%) พบว่ามีแท็บเบราว์เซอร์เปิดค้างถึง 47 แท็บ และโปรแกรม Photoshop ที่เปิดทิ้งไว้ตั้งแต่เช้า',
+      clue: '💡 เบาะแส: เมื่อ RAM เต็ม ระบบจะสลับไปใช้ Virtual Memory บน HDD ซึ่งช้ากว่า RAM มาก',
+    },
+    {
+      id: 'temp',
+      icon: '🌡️',
+      title: 'บันทึกอุณหภูมิ CPU',
+      type: 'ข้อมูลฮาร์ดแวร์',
+      content: 'อุณหภูมิ CPU อยู่ที่ 95°C (ปกติควรต่ำกว่า 80°C) พัดลมระบายความร้อนดังผิดปกติ พบฝุ่นสะสมอยู่ที่ช่องระบาย',
+      clue: '💡 เบาะแส: เมื่อ CPU ร้อนเกินไป ระบบจะใช้ Thermal Throttling ลดความเร็วอัตโนมัติ',
+    },
+    {
+      id: 'hdd',
+      icon: '💿',
+      title: 'ประสิทธิภาพ HDD',
+      type: 'ข้อมูลฮาร์ดแวร์',
+      content: 'HDD แสดง LED กะพริบตลอดเวลา ระบบกำลังอ่าน/เขียนข้อมูลอย่างหนัก พื้นที่ว่างเหลือเพียง 2% (ฟรี 4GB จาก 200GB)',
+      clue: '💡 เบาะแส: HDD เต็มทำให้ไม่มีพื้นที่สำหรับ Virtual Memory และ Temp files',
+    },
+    {
+      id: 'startup',
+      icon: '🚀',
+      title: 'รายการโปรแกรม Startup',
+      type: 'การตั้งค่าระบบ',
+      content: 'พบโปรแกรมที่เปิดอัตโนมัติเมื่อเปิดเครื่องถึง 23 โปรแกรม รวมถึง Antivirus Scan ที่ถูกตั้งให้รันตอนเที่ยง ซึ่งตรงกับเวลาที่คอมพิวเตอร์เริ่มช้า',
+      clue: '💡 เบาะแส: โปรแกรม Startup มากเกินไปแย่งใช้ทรัพยากรระบบ',
+    },
+    {
+      id: 'log',
+      icon: '📋',
+      title: 'บันทึก Event Log',
+      type: 'บันทึกระบบ',
+      content: 'Event Log แสดง Warning: "Windows Defender full scan started at 12:00" และ Error: "Low virtual memory" เวลา 12:15 ซึ่งตรงกับเวลาที่ปัญหาเริ่มต้น',
+      clue: '💡 เบาะแส: Windows Defender เริ่ม Scan พร้อมกันกับที่ Virtual Memory หมดพอดี',
+    },
+  ];
+
+  // ─── SUSPECT OPTIONS ───────────────────────────────────────
+  const suspects = [
+    { id: 'cpu-heat', label: '🌡️ CPU ร้อนเกิน + Thermal Throttling', correct: true },
+    { id: 'ram-full', label: '💾 RAM เต็ม + Virtual Memory', correct: true },
+    { id: 'virus', label: '🦠 ไวรัส / Malware', correct: false },
+    { id: 'hdd-bad', label: '💿 HDD เสีย', correct: false },
+    { id: 'power', label: '⚡ ไฟฟ้าไม่เพียงพอ', correct: false },
+  ];
+
+  // ─── TEAM SETUP ─────────────────────────────────────────────
+  function setTeamName(name) {
+    document.getElementById('team-name-input').value = name;
+  }
+
+  function setMemberCount(btn, count) {
+    document.querySelectorAll('.member-btn').forEach(b => {
+      b.style.background = 'var(--accent)';
+      b.style.borderColor = 'var(--border)';
+      b.style.color = 'var(--foreground)';
+    });
+    btn.style.background = '#f59e0b';
+    btn.style.borderColor = '#d97706';
+    btn.style.color = 'white';
+    state.memberCount = count;
+  }
+
+  function startGame() {
+    const name = document.getElementById('team-name-input').value.trim();
+    if (!name) {
+      document.getElementById('team-name-input').focus();
+      document.getElementById('team-name-input').style.borderColor = '#ef4444';
+      setTimeout(() => { document.getElementById('team-name-input').style.borderColor = 'var(--border)'; }, 2000);
+      return;
+    }
+    state.teamName = name;
+    state.gameStarted = true;
+    document.getElementById('story-team-name').textContent = name;
+    document.getElementById('story-score').textContent = '0';
+    showScreen('screen-story');
+    startTimer();
+    renderEvidenceGrid();
+    renderSuspects();
+  }
+
+  // ─── TIMER ──────────────────────────────────────────────────
+  function startTimer() {
+    if (state.timerInterval) clearInterval(state.timerInterval);
+    state.timerInterval = setInterval(() => {
+      if (state.gameOver) { clearInterval(state.timerInterval); return; }
+      state.timerSeconds--;
+      if (state.timerSeconds <= 0) {
+        state.timerSeconds = 0;
+        updateTimerDisplays();
+        clearInterval(state.timerInterval);
+        submitAnswer(true);
+        return;
+      }
+      updateTimerDisplays();
+    }, 1000);
+  }
+
+  function updateTimerDisplays() {
+    const m = Math.floor(state.timerSeconds / 60).toString().padStart(2, '0');
+    const s = (state.timerSeconds % 60).toString().padStart(2, '0');
+    const text = `${m}:${s}`;
+    ['timer-display', 'timer-ev', 'timer-nb'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.textContent = text;
+    });
+    // Color warning
+    const color = state.timerSeconds < 300 ? '#ef4444' : state.timerSeconds < 600 ? '#f59e0b' : '#ef4444';
+    ['timer-display', 'timer-ev', 'timer-nb'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.style.color = color;
+    });
+  }
+
+  // ─── SCREEN NAVIGATION ──────────────────────────────────────
+  function showScreen(id) {
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
+    window.scrollTo(0, 0);
+  }
+
+  function goToEvidence() {
+    showScreen('screen-evidence');
+    renderCollectedList();
+  }
+
+  function goToNotebook() {
+    showScreen('screen-notebook');
+    renderCollectedList();
+  }
+
+  function goToLeaderboard() {
+    showScreen('screen-leaderboard');
+    renderLeaderboard();
+  }
+
+  // ─── EVIDENCE GRID ──────────────────────────────────────────
+  function renderEvidenceGrid() {
+    const grid = document.getElementById('evidence-grid');
+    grid.innerHTML = '';
+    evidenceList.forEach((ev, i) => {
+      const collected = state.collectedEvidence.has(ev.id);
+      const div = document.createElement('div');
+      div.className = `evidence-card rounded-2xl p-4 ${collected ? 'collected' : ''}`;
+      div.style.cssText = `background: var(--card); border: 2px solid ${collected ? '#10b981' : 'var(--border)'};`;
+      div.onclick = () => openModal(i);
+      div.innerHTML = `
+        <div class="badge">✓</div>
+        <div class="text-3xl mb-2">${ev.icon}</div>
+        <p class="font-bold text-sm leading-tight" style="color: var(--foreground);">${ev.title}</p>
+        <p class="text-xs mt-1" style="color: var(--muted-foreground);">${ev.type}</p>
+        ${collected ? `<div class="mt-2 text-xs font-semibold" style="color: #10b981;">✓ เก็บแล้ว</div>` : `<div class="mt-2 text-xs" style="color: var(--muted-foreground);">คลิกเพื่อตรวจสอบ</div>`}
+      `;
+      grid.appendChild(div);
+    });
+    updateEvidenceCount();
+  }
+
+  function updateEvidenceCount() {
+    const n = state.collectedEvidence.size;
+    const total = evidenceList.length;
+    document.getElementById('evidence-count').textContent = `${n}/${total}`;
+    document.getElementById('ev-progress').style.width = `${(n / total) * 100}%`;
+  }
+
+  // ─── MODAL ──────────────────────────────────────────────────
+  let currentModalIdx = null;
+
+  function openModal(idx) {
+    const ev = evidenceList[idx];
+    currentModalIdx = idx;
+    document.getElementById('modal-icon').textContent = ev.icon;
+    document.getElementById('modal-title').textContent = ev.title;
+    document.getElementById('modal-type').textContent = `ประเภท: ${ev.type}`;
+    document.getElementById('modal-content').textContent = ev.content;
+    document.getElementById('modal-clue').textContent = ev.clue;
+
+    const collectBtn = document.getElementById('collect-btn');
+    if (state.collectedEvidence.has(ev.id)) {
+      collectBtn.textContent = '✓ เก็บแล้ว';
+      collectBtn.style.background = '#059669';
+      collectBtn.disabled = true;
+    } else {
+      collectBtn.textContent = '✓ เก็บหลักฐาน (+10 คะแนน)';
+      collectBtn.style.background = '#10b981';
+      collectBtn.disabled = false;
+    }
+
+    document.getElementById('evidence-modal').classList.add('open');
+  }
+
+  function closeModal() {
+    document.getElementById('evidence-modal').classList.remove('open');
+    currentModalIdx = null;
+  }
+
+  function collectEvidence() {
+    if (currentModalIdx === null) return;
+    const ev = evidenceList[currentModalIdx];
+    if (!state.collectedEvidence.has(ev.id)) {
+      state.collectedEvidence.add(ev.id);
+      state.score += 10;
+      renderEvidenceGrid();
+      renderCollectedList();
+    }
+    closeModal();
+  }
+
+  // ─── COLLECTED LIST ──────────────────────────────────────────
+  function renderCollectedList() {
+    const list = document.getElementById('collected-evidence-list');
+    if (state.collectedEvidence.size === 0) {
+      list.innerHTML = '<p class="text-center py-8 text-sm" style="color: var(--muted-foreground);">ยังไม่มีหลักฐานที่เก็บได้<br>กลับไปค้นหาในห้องหลักฐาน</p>';
+      return;
+    }
+    list.innerHTML = '';
+    evidenceList.filter(ev => state.collectedEvidence.has(ev.id)).forEach(ev => {
+      const div = document.createElement('div');
+      div.className = 'rounded-xl p-3 flex items-start gap-3';
+      div.style.cssText = 'background: var(--card); border: 1px solid #10b981;';
+      div.innerHTML = `
+        <span class="text-2xl">${ev.icon}</span>
+        <div>
+          <p class="font-semibold text-sm" style="color: var(--foreground);">${ev.title}</p>
+          <p class="text-xs mt-1 leading-relaxed" style="color: var(--muted-foreground);">${ev.clue}</p>
+        </div>
+      `;
+      list.appendChild(div);
+    });
+  }
+
+  // ─── SUSPECTS ────────────────────────────────────────────────
+  function renderSuspects() {
+    const list = document.getElementById('suspect-list');
+    list.innerHTML = '';
+    suspects.forEach(s => {
+      const btn = document.createElement('button');
+      btn.className = 'w-full text-left rounded-xl px-4 py-3 text-sm font-semibold transition';
+      btn.style.cssText = 'background: var(--background); border: 2px solid var(--border); color: var(--foreground);';
+      btn.textContent = s.label;
+      btn.onclick = () => selectSuspect(s.id, btn);
+      btn.dataset.sid = s.id;
+      list.appendChild(btn);
+    });
+  }
+
+  function selectSuspect(id, btn) {
+    state.selectedSuspect = id;
+    document.querySelectorAll('#suspect-list button').forEach(b => {
+      b.style.background = 'var(--background)';
+      b.style.borderColor = 'var(--border)';
+    });
+    btn.style.background = 'rgba(245,158,11,0.15)';
+    btn.style.borderColor = '#f59e0b';
+  }
+
+  // ─── TABS ────────────────────────────────────────────────────
+  function switchTab(tab) {
+    ['clues', 'analysis', 'conclusion'].forEach(t => {
+      document.getElementById(`tab-content-${t}`).classList.toggle('hidden', t !== tab);
+      const btn = document.getElementById(`tab-${t}`);
+      if (t === tab) {
+        btn.style.background = 'var(--primary)';
+        btn.style.color = 'var(--primary-foreground)';
+        btn.style.border = 'none';
+      } else {
+        btn.style.background = 'var(--card)';
+        btn.style.color = 'var(--foreground)';
+        btn.style.border = '1px solid var(--border)';
+      }
+    });
+  }
+
+  // ─── LEADERBOARD ─────────────────────────────────────────────
+  function renderLeaderboard() {
+    document.getElementById('lb-team-name').textContent = state.teamName;
+    document.getElementById('lb-score').textContent = state.score;
+
+    // Merge and sort
+    const all = [
+      { name: state.teamName, score: state.score, isMe: true },
+      ...otherTeams,
+    ].sort((a, b) => b.score - a.score);
+
+    const medals = ['🥇', '🥈', '🥉'];
+    const list = document.getElementById('leaderboard-list');
+    list.innerHTML = '';
+    all.forEach((team, i) => {
+      const row = document.createElement('div');
+      row.className = 'leaderboard-row flex items-center justify-between px-4 py-3';
+      row.innerHTML = `
+        <div class="flex items-center gap-3">
+          <span class="text-xl font-bold w-8">${medals[i] || `#${i + 1}`}</span>
+          <span class="font-semibold text-sm ${team.isMe ? '' : ''}" style="color: ${team.isMe ? '#f59e0b' : 'var(--foreground)'};">${team.name}${team.isMe ? ' ← คุณ' : ''}</span>
+        </div>
+        <span class="font-bold text-lg" style="color: ${team.isMe ? '#f59e0b' : 'var(--foreground)'};">${team.score}</span>
+      `;
+      list.appendChild(row);
+    });
+  }
+
+  // ─── SUBMIT ANSWER ───────────────────────────────────────────
+  function submitAnswer(timeout = false) {
+    if (state.gameOver) return;
+    state.gameOver = true;
+    clearInterval(state.timerInterval);
+
+    // Calculate bonus
+    const conclusionText = document.getElementById('conclusion-text').value.trim();
+    const analysisText = document.getElementById('analysis-links').value.trim() + document.getElementById('analysis-cause').value.trim();
+
+    // Check suspect
+    const suspect = suspects.find(s => s.id === state.selectedSuspect);
+    const correct = suspect && suspect.correct;
+    if (correct) state.score += 50;
+
+    // Analysis bonus
+    if (analysisText.length > 30) state.score += 20;
+
+    // Time bonus
+    const minutesLeft = Math.floor(state.timerSeconds / 60);
+    state.score += minutesLeft * 5;
+
+    showScreen('screen-reveal');
+    renderReveal(correct, conclusionText, timeout);
+    launchConfetti();
+  }
+
+  function renderReveal(correct, conclusionText, timeout) {
+    const card = document.getElementById('result-card');
+    const stars = state.score >= 100 ? 3 : state.score >= 60 ? 2 : 1;
+    const starsHtml = '⭐'.repeat(stars) + '☆'.repeat(3 - stars);
+
+    card.style.cssText = `background: linear-gradient(135deg, rgba(245,158,11,0.15), rgba(217,119,6,0.1)); border: 2px solid rgba(245,158,11,0.4);`;
+    card.innerHTML = `
+      <p class="font-bold text-lg mb-1" style="color: var(--foreground);">${state.teamName}</p>
+      <div class="text-3xl mb-2 star-spin">${starsHtml}</div>
+      <p class="text-5xl font-bold mb-2" style="color: #f59e0b;">${state.score}</p>
+      <p class="text-sm" style="color: var(--muted-foreground);">คะแนนรวม</p>
+      ${correct ? '<div class="mt-3 inline-block px-4 py-1 rounded-full text-sm font-bold" style="background: rgba(16,185,129,0.2); color: #10b981; border: 1px solid #10b981;">✅ ระบุสาเหตุได้ถูกต้อง!</div>' : '<div class="mt-3 inline-block px-4 py-1 rounded-full text-sm font-bold" style="background: rgba(239,68,68,0.1); color: #ef4444; border: 1px solid rgba(239,68,68,0.3);">❌ สาเหตุยังไม่ถูกต้อง</div>'}
+    `;
+
+    document.getElementById('review-conclusion').textContent = conclusionText || '(ไม่ได้เขียนสรุป)';
+  }
+
+  // ─── CONFETTI ────────────────────────────────────────────────
+  function launchConfetti() {
+    const colors = ['#f59e0b', '#10b981', '#3b82f6', '#ef4444', '#8b5cf6'];
+    for (let i = 0; i < 50; i++) {
+      setTimeout(() => {
+        const el = document.createElement('div');
+        el.className = 'confetti-piece';
+        el.style.cssText = `
+          left: ${Math.random() * 100}vw;
+          background: ${colors[Math.floor(Math.random() * colors.length)]};
+          animation-delay: ${Math.random() * 0.5}s;
+          animation-duration: ${2 + Math.random() * 2}s;
+        `;
+        document.body.appendChild(el);
+        setTimeout(() => el.remove(), 4000);
+      }, i * 30);
+    }
+  }
+
+  // ─── PLAY AGAIN ──────────────────────────────────────────────
+  function playAgain() {
+    state = {
+      teamName: '',
+      memberCount: 4,
+      score: 0,
+      collectedEvidence: new Set(),
+      timerSeconds: 25 * 60,
+      timerInterval: null,
+      activeModal: null,
+      selectedSuspect: null,
+      gameStarted: false,
+      gameOver: false,
+    };
+    document.getElementById('team-name-input').value = '';
+    document.getElementById('conclusion-text').value = '';
+    document.getElementById('analysis-links').value = '';
+    document.getElementById('analysis-cause').value = '';
+    document.querySelectorAll('.member-btn').forEach(b => {
+      b.style.background = 'var(--accent)';
+      b.style.borderColor = 'var(--border)';
+      b.style.color = 'var(--foreground)';
+    });
+    showScreen('screen-team');
+  }
+
+  // ─── CLOSE MODAL ON BACKDROP ─────────────────────────────────
+  document.getElementById('evidence-modal').addEventListener('click', function(e) {
+    if (e.target === this) closeModal();
+  });
+
+  // ─── INIT RENDERS ────────────────────────────────────────────
+  renderEvidenceGrid();
+</script>
+</body>
+</html>

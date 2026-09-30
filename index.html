@@ -5,916 +5,704 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>🕵️ นักสืบปริศนา – Mystery Classroom</title>
   <script src="https://www.gstatic.com/antigravity/web/dev/tailwindcss.min.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <style>
-    @import url('https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600;700&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;600;700&family=Sarabun:wght@400;600;700&display=swap');
+
+    :root {
+      --bg-dark: #0f172a;
+      --card-bg: rgba(30, 41, 59, 0.8);
+      --corkboard: #a1662f;
+      --accent: #f59e0b;
+      --success: #10b981;
+      --danger: #ef4444;
+    }
 
     * { box-sizing: border-box; }
 
     body {
       font-family: 'Sarabun', sans-serif;
-      background: var(--background);
-      color: var(--foreground);
+      background: var(--bg-dark);
+      color: #f8fafc;
       margin: 0;
       min-height: 100vh;
+      overflow-x: hidden;
     }
 
-    .screen { display: none; min-height: 100vh; }
+    h1, h2, h3, .font-prompt { font-family: 'Prompt', sans-serif; }
+
+    .screen { display: none; min-height: 100vh; animation: fadeIn 0.5s ease; }
     .screen.active { display: flex; flex-direction: column; }
 
-    /* Cinematic intro */
-    .film-grain {
-      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
-    }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 
-    .typewriter { overflow: hidden; border-right: 2px solid #f59e0b; white-space: nowrap; animation: typing 2s steps(40,end), blink 0.75s step-end infinite; }
-    @keyframes typing { from { width: 0 } to { width: 100% } }
-    @keyframes blink { from, to { border-color: transparent } 50% { border-color: #f59e0b; } }
-
-    .evidence-card {
-      transition: all 0.3s ease;
-      cursor: pointer;
+    /* Theme: Corkboard */
+    .corkboard-bg {
+      background-color: var(--corkboard);
+      background-image: url("data:image/svg+xml,%3Csvg width='100' height='100' viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100' height='100' filter='url(%23noise)' opacity='0.15'/%3E%3C/svg%3E");
       position: relative;
     }
-    .evidence-card:hover { transform: translateY(-4px); box-shadow: 0 8px 24px rgba(0,0,0,0.2); }
-    .evidence-card.collected { border-color: #10b981 !important; }
-    .evidence-card .badge {
-      position: absolute;
-      top: -8px; right: -8px;
-      background: #10b981;
-      color: white;
-      border-radius: 50%;
-      width: 24px; height: 24px;
-      display: flex; align-items: center; justify-content: center;
-      font-size: 14px;
-      opacity: 0;
-      transition: opacity 0.3s;
+
+    /* Polaroids & Notes */
+    .evidence-item {
+      background: #fff;
+      color: #333;
+      padding: 10px 10px 25px 10px;
+      box-shadow: 0 10px 15px -3px rgba(0,0,0,0.5);
+      position: relative;
+      cursor: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8" fill="rgba(255,255,255,0.2)"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>') 12 12, pointer;
+      transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
     }
-    .evidence-card.collected .badge { opacity: 1; }
+    .evidence-item:hover { transform: scale(1.05) rotate(0deg) !important; z-index: 10; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.6); }
+    .evidence-item.collected { opacity: 0.7; filter: grayscale(50%); cursor: default; }
+    .evidence-item.collected::after {
+      content: '✓ เก็บแล้ว';
+      position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) rotate(-15deg);
+      color: #10b981; border: 3px solid #10b981; padding: 5px 10px; font-weight: bold; border-radius: 5px;
+      font-size: 1.2rem; background: rgba(255,255,255,0.9); z-index: 2;
+    }
+    
+    .pin {
+      position: absolute; top: -10px; left: 50%; transform: translateX(-50%);
+      width: 15px; height: 15px; border-radius: 50%; background: #ef4444;
+      box-shadow: inset -2px -2px 4px rgba(0,0,0,0.5), 2px 2px 5px rgba(0,0,0,0.5);
+      z-index: 2;
+    }
 
-    .notebook-line { border-bottom: 1px dashed var(--border); margin-bottom: 8px; }
+    /* Glassmorphism */
+    .glass-panel {
+      background: rgba(15, 23, 42, 0.7);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid rgba(255,255,255,0.1);
+    }
 
-    .leaderboard-row { transition: all 0.3s; }
-    .leaderboard-row:first-child { background: linear-gradient(90deg, rgba(251,191,36,0.15), transparent); }
-    .leaderboard-row:nth-child(2) { background: linear-gradient(90deg, rgba(156,163,175,0.1), transparent); }
-    .leaderboard-row:nth-child(3) { background: linear-gradient(90deg, rgba(180,83,9,0.1), transparent); }
+    /* Interactive Minigames */
+    .fake-window { background: #cbd5e1; border-radius: 8px; overflow: hidden; color: #000; font-family: sans-serif; }
+    .fake-titlebar { background: #3b82f6; color: white; padding: 5px 10px; font-size: 12px; display: flex; justify-content: space-between; }
+    .fake-content { padding: 10px; background: #fff; }
+    
+    .task-row { display: flex; justify-content: space-between; padding: 5px; border-bottom: 1px solid #eee; font-size: 14px; cursor: pointer; }
+    .task-row:hover { background: #e2e8f0; }
+    .task-high { color: #ef4444; font-weight: bold; }
 
-    .progress-bar { transition: width 1s ease; }
+    .terminal { background: #000; color: #10b981; font-family: monospace; padding: 15px; border-radius: 8px; height: 150px; overflow-y: auto; }
+    .term-input { background: transparent; border: none; color: #10b981; outline: none; font-family: monospace; width: 80%; }
 
-    .tab-btn { transition: all 0.2s; }
-    .tab-btn.active { background: var(--primary); color: var(--primary-foreground); }
-
+    /* Modals */
     .modal-overlay {
-      position: fixed; inset: 0;
-      background: rgba(0,0,0,0.7);
+      position: fixed; inset: 0; background: rgba(0,0,0,0.85); backdrop-filter: blur(5px);
       display: flex; align-items: center; justify-content: center;
-      z-index: 100;
-      opacity: 0;
-      pointer-events: none;
-      transition: opacity 0.3s;
+      z-index: 100; opacity: 0; pointer-events: none; transition: opacity 0.3s;
     }
     .modal-overlay.open { opacity: 1; pointer-events: all; }
-    .modal-box { transform: scale(0.9); transition: transform 0.3s; max-width: 90vw; width: 520px; }
+    .modal-box { transform: scale(0.9); transition: transform 0.3s; width: 90%; max-width: 500px; }
     .modal-overlay.open .modal-box { transform: scale(1); }
 
-    .pulse-ring {
-      animation: pulse-ring 2s ease-out infinite;
+    /* Glitch effect for Story */
+    .glitch { position: relative; color: white; }
+    .glitch::before, .glitch::after {
+      content: attr(data-text); position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+      background: var(--bg-dark);
     }
-    @keyframes pulse-ring {
-      0% { transform: scale(1); opacity: 1; }
-      100% { transform: scale(1.4); opacity: 0; }
-    }
-
-    .clue-glow { box-shadow: 0 0 20px rgba(251, 191, 36, 0.4); }
-
-    .star-spin { animation: star-appear 0.5s ease forwards; }
-    @keyframes star-appear { from { transform: scale(0) rotate(-180deg); opacity: 0; } to { transform: scale(1) rotate(0deg); opacity: 1; } }
-
-    .confetti-piece {
-      position: fixed;
-      width: 10px; height: 10px;
-      animation: fall 3s ease-out forwards;
-      border-radius: 2px;
-    }
-    @keyframes fall {
-      0% { transform: translateY(-50px) rotate(0deg); opacity: 1; }
-      100% { transform: translateY(110vh) rotate(720deg); opacity: 0; }
+    .glitch::before { left: 2px; text-shadow: -1px 0 red; clip: rect(24px, 550px, 90px, 0); animation: glitch-anim 3s infinite linear alternate-reverse; }
+    .glitch::after { left: -2px; text-shadow: -1px 0 blue; clip: rect(85px, 550px, 140px, 0); animation: glitch-anim 2.5s infinite linear alternate-reverse; }
+    @keyframes glitch-anim {
+      0% { clip: rect(10px, 9999px, 44px, 0); }
+      20% { clip: rect(65px, 9999px, 92px, 0); }
+      40% { clip: rect(12px, 9999px, 83px, 0); }
+      60% { clip: rect(78px, 9999px, 14px, 0); }
+      80% { clip: rect(32px, 9999px, 56px, 0); }
+      100% { clip: rect(98px, 9999px, 21px, 0); }
     }
   </style>
 </head>
 <body>
 
 <!-- ============================================================
-     SCREEN 0: TEAM SETUP
+     SCREEN 0: TEAM SETUP & DB STATUS
      ============================================================ -->
-<div id="screen-team" class="screen active" style="background: var(--background);">
-  <div class="flex flex-col items-center justify-center min-h-screen p-6">
-    <div class="w-full max-w-md">
-      <!-- Logo -->
+<div id="screen-team" class="screen active relative">
+  <!-- DB Status Indicator -->
+  <div class="absolute top-4 right-4 glass-panel px-3 py-1 rounded-full text-xs flex items-center gap-2">
+    <div id="db-status-dot" class="w-2 h-2 rounded-full bg-green-400 animate-pulse"></div>
+    <span id="db-status-text">ระบบบันทึกข้อมูล (Local) ทำงาน</span>
+  </div>
+
+  <div class="flex flex-col items-center justify-center min-h-screen p-6 z-10">
+    <div class="w-full max-w-md glass-panel rounded-3xl p-8 shadow-2xl border-t border-white/20">
       <div class="text-center mb-8">
-        <div class="text-6xl mb-3">🕵️</div>
-        <h1 class="text-3xl font-bold" style="color: var(--foreground);">นักสืบปริศนา</h1>
-        <p class="text-lg mt-1" style="color: #f59e0b;">Mystery Classroom</p>
-        <div class="mt-2 h-px w-32 mx-auto" style="background: var(--border);"></div>
+        <div class="text-7xl mb-4 drop-shadow-lg">🕵️‍♂️</div>
+        <h1 class="text-4xl font-prompt font-bold text-transparent bg-clip-text bg-gradient-to-r from-amber-400 to-orange-500">นักสืบปริศนา</h1>
+        <p class="text-lg text-slate-300 mt-2 tracking-widest uppercase">Mystery Classroom</p>
       </div>
 
-      <!-- Team name -->
-      <div class="rounded-2xl p-6 mb-4" style="background: var(--card); border: 1px solid var(--border);">
-        <label class="block text-sm font-semibold mb-2" style="color: var(--muted-foreground);">🏷️ ชื่อทีมของคุณ</label>
-        <input id="team-name-input" type="text" placeholder="เช่น ทีมอินทรี, กลุ่ม 1..."
-          class="w-full rounded-lg px-4 py-3 text-base font-semibold outline-none transition"
-          style="background: var(--background); border: 2px solid var(--border); color: var(--foreground);"
-          maxlength="30"
-          onfocus="this.style.borderColor='#f59e0b'"
-          onblur="this.style.borderColor='var(--border)'"
-        />
-        <!-- Preset team names -->
-        <div class="flex flex-wrap gap-2 mt-3">
-          <span class="text-xs" style="color: var(--muted-foreground);">ลองเลือก:</span>
-          <button onclick="setTeamName('🦅 ทีมอินทรี')" class="text-xs px-2 py-1 rounded-full cursor-pointer hover:opacity-80" style="background: var(--accent); color: var(--foreground); border: 1px solid var(--border);">🦅 ทีมอินทรี</button>
-          <button onclick="setTeamName('🐯 ทีมเสือ')" class="text-xs px-2 py-1 rounded-full cursor-pointer hover:opacity-80" style="background: var(--accent); color: var(--foreground); border: 1px solid var(--border);">🐯 ทีมเสือ</button>
-          <button onclick="setTeamName('🐲 ทีมมังกร')" class="text-xs px-2 py-1 rounded-full cursor-pointer hover:opacity-80" style="background: var(--accent); color: var(--foreground); border: 1px solid var(--border);">🐲 ทีมมังกร</button>
-          <button onclick="setTeamName('🦁 ทีมสิงห์')" class="text-xs px-2 py-1 rounded-full cursor-pointer hover:opacity-80" style="background: var(--accent); color: var(--foreground); border: 1px solid var(--border);">🦁 ทีมสิงห์</button>
-        </div>
+      <div class="mb-6">
+        <label class="block text-sm font-semibold text-slate-400 mb-2"><i class="fa-solid fa-users mr-2"></i>ชื่อทีมของคุณ</label>
+        <input id="team-name-input" type="text" placeholder="พิมพ์ชื่อทีมที่นี่..."
+          class="w-full rounded-xl px-4 py-3 bg-slate-800/50 border border-slate-600 text-white focus:border-amber-400 focus:ring-2 focus:ring-amber-400/20 transition outline-none"
+          maxlength="30" />
       </div>
 
-      <!-- Member count -->
-      <div class="rounded-2xl p-6 mb-6" style="background: var(--card); border: 1px solid var(--border);">
-        <label class="block text-sm font-semibold mb-3" style="color: var(--muted-foreground);">👥 จำนวนสมาชิกในทีม</label>
-        <div class="flex gap-3 justify-center">
-          <button onclick="setMemberCount(this, 2)" class="member-btn w-12 h-12 rounded-xl font-bold text-lg transition hover:scale-105" style="background: var(--accent); border: 2px solid var(--border); color: var(--foreground);">2</button>
-          <button onclick="setMemberCount(this, 3)" class="member-btn w-12 h-12 rounded-xl font-bold text-lg transition hover:scale-105" style="background: var(--accent); border: 2px solid var(--border); color: var(--foreground);">3</button>
-          <button onclick="setMemberCount(this, 4)" class="member-btn w-12 h-12 rounded-xl font-bold text-lg transition hover:scale-105" style="background: var(--accent); border: 2px solid var(--border); color: var(--foreground);">4</button>
-          <button onclick="setMemberCount(this, 5)" class="member-btn w-12 h-12 rounded-xl font-bold text-lg transition hover:scale-105" style="background: var(--accent); border: 2px solid var(--border); color: var(--foreground);">5</button>
-          <button onclick="setMemberCount(this, 6)" class="member-btn w-12 h-12 rounded-xl font-bold text-lg transition hover:scale-105" style="background: var(--accent); border: 2px solid var(--border); color: var(--foreground);">6</button>
-        </div>
-      </div>
-
-      <!-- Start button -->
-      <button onclick="startGame()" class="w-full py-4 rounded-2xl font-bold text-xl text-white transition hover:opacity-90 active:scale-95" style="background: linear-gradient(135deg, #d97706, #f59e0b);">
-        🔍 รับคดีใหม่!
+      <button onclick="startGame()" class="w-full py-4 rounded-xl font-prompt font-bold text-xl text-white shadow-lg transition-all hover:scale-105 active:scale-95 bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-400 hover:to-orange-500">
+        <i class="fa-solid fa-fingerprint mr-2"></i> ยืนยันและรับคดี!
       </button>
 
-      <p class="text-center text-xs mt-4" style="color: var(--muted-foreground);">คดีที่ 01 • ความลับของคอมพิวเตอร์ช้า</p>
+      <div class="mt-6 text-center">
+        <button onclick="clearDatabase()" class="text-xs text-slate-500 hover:text-red-400 underline decoration-dotted"><i class="fa-solid fa-trash-can mr-1"></i>ล้างข้อมูลที่บันทึกไว้</button>
+      </div>
     </div>
   </div>
+  
+  <!-- Background decoration -->
+  <div class="absolute inset-0 z-0 opacity-20 pointer-events-none" style="background: radial-gradient(circle at 50% 50%, #f59e0b 0%, transparent 60%);"></div>
 </div>
 
 <!-- ============================================================
      SCREEN 1: STORY / CASE INTRO
      ============================================================ -->
-<div id="screen-story" class="screen" style="background: #0f0f0f;">
-  <div class="flex flex-col items-center justify-center min-h-screen p-6">
-    <div class="w-full max-w-xl">
-
-      <!-- Case file header -->
-      <div class="text-center mb-6">
-        <div class="inline-block px-3 py-1 rounded-full text-xs font-bold mb-3" style="background: rgba(239,68,68,0.15); color: #ef4444; border: 1px solid rgba(239,68,68,0.3);">
-          🔴 คดีใหม่ถูกเปิด
+<div id="screen-story" class="screen">
+  <div class="flex flex-col items-center justify-center min-h-screen p-6 relative">
+    <div class="w-full max-w-2xl glass-panel rounded-2xl p-1 shadow-2xl relative z-10">
+      <div class="bg-slate-900 rounded-xl p-8 border border-slate-700">
+        
+        <div class="flex justify-between items-center mb-6 border-b border-slate-700 pb-4">
+          <div class="px-3 py-1 rounded-sm bg-red-900/50 text-red-400 text-xs font-bold font-prompt uppercase tracking-widest border border-red-500/30">
+            <i class="fa-solid fa-circle text-[8px] animate-pulse mr-1"></i> Top Secret
+          </div>
+          <div class="text-right">
+            <p class="text-xs text-slate-500">CASE FILE</p>
+            <p class="font-mono text-amber-500 font-bold">#01-SYS-SLOW</p>
+          </div>
         </div>
-        <h2 class="text-2xl font-bold" style="color: #f59e0b;">คดีที่ 01</h2>
-        <h1 class="text-xl font-bold mt-1 text-white">"ใครทำให้คอมพิวเตอร์ช้าลง?"</h1>
-      </div>
 
-      <!-- Story card -->
-      <div class="rounded-2xl p-6 mb-6 relative overflow-hidden" style="background: #1a1a1a; border: 1px solid #333;">
-        <div class="absolute top-0 left-0 w-full h-1" style="background: linear-gradient(90deg, #d97706, #f59e0b, #d97706);"></div>
-
-        <div class="flex items-start gap-3 mb-4">
+        <h1 class="text-3xl font-prompt font-bold text-white mb-2 glitch" data-text="ใครทำให้คอมพิวเตอร์ช้าลง?">ใครทำให้คอมพิวเตอร์ช้าลง?</h1>
+        
+        <div class="flex gap-4 mt-6 bg-slate-800/50 p-4 rounded-lg">
           <div class="text-4xl">🖥️</div>
-          <div>
-            <p class="font-bold text-white text-lg">รายงานเหตุการณ์</p>
-            <p class="text-xs" style="color: #888;">วันที่ 1 ตุลาคม 2567 • ห้องคอมพิวเตอร์ โรงเรียน ABC</p>
+          <div class="text-slate-300 leading-relaxed text-sm">
+            <p class="mb-2"><strong class="text-amber-400 font-prompt">สถานที่:</strong> ห้องเรียนคอมพิวเตอร์ เครื่องหมายเลข 12</p>
+            <p class="mb-2"><strong class="text-amber-400 font-prompt">เหตุการณ์:</strong> นักเรียนแจ้งว่าเครื่องทำงานช้ามากผิดปกติ พัดลมดังลั่น เสียงเหมือนจะบินได้ ขยับเมาส์ยังกระตุก!</p>
+            <p><strong class="text-amber-400 font-prompt">ภารกิจของคุณ:</strong> เข้าไปที่ "ห้องหลักฐาน" เพื่อตรวจสอบระบบ ค้นหาสาเหตุที่แท้จริง และส่งรายงานสรุปให้ครูประจำวิชาด่วน!</p>
           </div>
         </div>
 
-        <div class="space-y-3 text-base leading-relaxed" style="color: #ccc;">
-          <p>🚨 <strong style="color: #f59e0b;">เหตุการณ์:</strong> คอมพิวเตอร์ในห้อง IT ทำงานช้ามากผิดปกติ นักเรียนร้องเรียนว่าไม่สามารถทำงานได้</p>
-          <p>📋 <strong style="color: #f59e0b;">ข้อมูลเบื้องต้น:</strong> เครื่องทำงานมาตั้งแต่เช้า ไม่มีการติดตั้งโปรแกรมใหม่ แต่สังเกตว่าพัดลมระบายความร้อนดังผิดปกติ</p>
-          <p>🎯 <strong style="color: #f59e0b;">ภารกิจ:</strong> ทีมนักสืบต้องค้นหาหลักฐาน วิเคราะห์สาเหตุ และสรุปว่าอะไรทำให้คอมพิวเตอร์ช้าลง</p>
+        <!-- Team & Timer -->
+        <div class="mt-8 grid grid-cols-2 gap-4">
+          <div class="bg-slate-800 p-4 rounded-lg border-l-4 border-amber-500">
+            <p class="text-xs text-slate-400">ทีมสืบสวน</p>
+            <p class="font-prompt font-bold text-lg text-white truncate" id="story-team-name">-</p>
+          </div>
+          <div class="bg-slate-800 p-4 rounded-lg border-l-4 border-red-500 flex justify-between items-center">
+            <div>
+              <p class="text-xs text-slate-400">เวลาที่เหลือ</p>
+              <p class="font-mono font-bold text-2xl text-red-400" id="timer-display">20:00</p>
+            </div>
+            <i class="fa-regular fa-clock text-3xl text-slate-600"></i>
+          </div>
         </div>
-      </div>
 
-      <!-- Team badge -->
-      <div class="rounded-xl px-4 py-3 mb-6 flex items-center gap-3" style="background: rgba(245,158,11,0.1); border: 1px solid rgba(245,158,11,0.3);">
-        <div class="text-2xl">🏅</div>
-        <div>
-          <p class="text-sm" style="color: #888;">ทีมที่ได้รับมอบหมาย</p>
-          <p class="font-bold text-lg" id="story-team-name" style="color: #f59e0b;">-</p>
-        </div>
-        <div class="ml-auto text-right">
-          <p class="text-xs" style="color: #888;">คะแนนเริ่มต้น</p>
-          <p class="font-bold text-2xl text-white" id="story-score">0</p>
-        </div>
+        <button onclick="goToEvidence()" class="w-full mt-8 py-4 rounded-xl font-prompt font-bold text-lg text-white transition hover:bg-amber-500 bg-amber-600">
+          <i class="fa-solid fa-door-open mr-2"></i> เข้าสู่ห้องหลักฐาน
+        </button>
       </div>
-
-      <!-- Timer -->
-      <div class="text-center mb-6">
-        <div class="inline-flex items-center gap-2 px-4 py-2 rounded-full" style="background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.3);">
-          <span class="text-red-400">⏱</span>
-          <span class="font-mono font-bold text-xl" id="timer-display" style="color: #ef4444;">25:00</span>
-          <span class="text-xs" style="color: #888;">เวลาที่เหลือ</span>
-        </div>
-      </div>
-
-      <button onclick="goToEvidence()" class="w-full py-4 rounded-2xl font-bold text-xl text-white transition hover:opacity-90 active:scale-95" style="background: linear-gradient(135deg, #d97706, #f59e0b);">
-        🔍 เริ่มค้นหาหลักฐาน!
-      </button>
     </div>
   </div>
 </div>
 
 <!-- ============================================================
-     SCREEN 2: EVIDENCE COLLECTION
+     SCREEN 2: EVIDENCE ROOM (CORKBOARD)
      ============================================================ -->
-<div id="screen-evidence" class="screen" style="background: var(--background);">
-  <div class="p-4 max-w-2xl mx-auto w-full">
-    <!-- Top bar -->
-    <div class="flex items-center justify-between mb-4">
+<div id="screen-evidence" class="screen corkboard-bg">
+  
+  <!-- Header -->
+  <div class="glass-panel p-4 sticky top-0 z-50 flex justify-between items-center shadow-md">
+    <div class="flex items-center gap-4">
+      <h2 class="font-prompt font-bold text-xl text-white"><i class="fa-solid fa-magnifying-glass text-amber-400 mr-2"></i> กระดานหลักฐาน</h2>
+    </div>
+    <div class="flex gap-4 items-center">
+      <div class="text-right hidden sm:block">
+        <p class="text-[10px] text-slate-300 uppercase tracking-widest">หลักฐานที่พบ</p>
+        <p class="font-bold text-amber-400" id="evidence-count">0/4</p>
+      </div>
+      <div class="font-mono font-bold bg-slate-900 px-3 py-1 rounded text-red-400 border border-red-500/30" id="timer-ev">20:00</div>
+      <button onclick="goToNotebook()" class="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg font-prompt text-sm shadow-lg transition">
+        <i class="fa-solid fa-book-journal-whills mr-1"></i> สมุดไขคดี
+      </button>
+    </div>
+  </div>
+
+  <!-- Evidence Grid on Corkboard -->
+  <div class="p-4 sm:p-8 min-h-full relative overflow-hidden flex-1">
+    <div class="max-w-4xl mx-auto relative h-[600px]" id="evidence-board">
+      <!-- Clue 1: Task Manager (Interactive) -->
+      <div id="card-clue1" class="evidence-item absolute w-48 rotate-[-3deg] top-10 left-4 sm:left-10" onclick="openMinigame('taskmgr')" style="transform: rotate(-3deg);">
+        <div class="pin"></div>
+        <div class="w-full h-32 bg-slate-200 border border-slate-300 flex items-center justify-center mb-2 overflow-hidden">
+          <img src="https://img.freepik.com/free-vector/system-task-manager-concept-illustration_114360-6313.jpg?w=300" class="w-full h-full object-cover opacity-80 mix-blend-multiply">
+        </div>
+        <p class="font-prompt font-bold text-sm text-center">ภาพถ่ายหน้าจอ #1</p>
+        <p class="text-[10px] text-center text-slate-500 mt-1">คลิกเพื่อตรวจสอบ</p>
+      </div>
+
+      <!-- Clue 2: Thermometer -->
+      <div id="card-clue2" class="evidence-item absolute w-40 rotate-[5deg] top-20 right-4 sm:right-20" onclick="openMinigame('temp')" style="transform: rotate(5deg);">
+        <div class="pin"></div>
+        <div class="w-full h-32 bg-red-100 flex items-center justify-center mb-2 text-4xl text-red-500">
+          <i class="fa-solid fa-temperature-arrow-up"></i>
+        </div>
+        <p class="font-prompt font-bold text-sm text-center">บันทึกเซ็นเซอร์</p>
+      </div>
+
+      <!-- Clue 3: RAM Info -->
+      <div id="card-clue3" class="evidence-item absolute w-52 rotate-[-2deg] bottom-32 left-12 sm:left-40" onclick="openMinigame('ram')" style="transform: rotate(-2deg);">
+        <div class="pin"></div>
+        <div class="w-full bg-yellow-100 p-3 mb-2 font-handwriting text-blue-800 text-sm" style="font-family: 'Comic Sans MS', cursive;">
+          "เครื่องกระตุกมาก เปิดเว็บไว้ 50 แท็บ แล้วสลับไปตัดต่อวิดีโอ พอจะเซฟก็ค้างไปเลย!" - คำให้การของนักเรียน
+        </div>
+        <p class="font-prompt font-bold text-sm text-center">กระดาษโน้ตคำให้การ</p>
+      </div>
+
+      <!-- Clue 4: Terminal / Log -->
+      <div id="card-clue4" class="evidence-item absolute w-48 rotate-[4deg] bottom-10 right-10 sm:right-40" onclick="openMinigame('terminal')" style="transform: rotate(4deg);">
+        <div class="pin"></div>
+        <div class="w-full h-32 bg-slate-900 p-2 mb-2">
+          <div class="text-[8px] text-green-500 font-mono">
+            > System Error<br>
+            > Page fault in nonpaged area<br>
+            > Throttling active<br>
+            > [ENCRYPTED DATA]
+          </div>
+        </div>
+        <p class="font-prompt font-bold text-sm text-center">ไฟล์ Log ระบบ (ล็อก)</p>
+      </div>
+      
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     SCREEN 3: NOTEBOOK & DB
+     ============================================================ -->
+<div id="screen-notebook" class="screen bg-slate-900">
+  <div class="p-4 max-w-3xl mx-auto w-full h-full flex flex-col">
+    <div class="flex items-center justify-between mb-6">
+      <button onclick="showScreen('screen-evidence')" class="text-slate-400 hover:text-white transition"><i class="fa-solid fa-arrow-left text-xl"></i> กลับกระดาน</button>
+      <h2 class="font-prompt font-bold text-2xl"><i class="fa-solid fa-book-open text-blue-400 mr-2"></i> สมุดไขคดี</h2>
+      <div class="font-mono font-bold text-red-400" id="timer-nb">20:00</div>
+    </div>
+
+    <!-- DB Stats Banner -->
+    <div class="bg-blue-900/30 border border-blue-500/30 rounded-xl p-4 mb-6 flex justify-between items-center">
       <div>
-        <h2 class="font-bold text-lg" style="color: var(--foreground);">📂 ห้องหลักฐาน</h2>
-        <p class="text-xs" style="color: var(--muted-foreground);">คลิกหลักฐานเพื่อตรวจสอบ</p>
+        <p class="text-xs text-blue-300">ทีมของคุณ: <strong id="nb-team-name" class="text-white text-base"></strong></p>
+        <p class="text-[10px] text-slate-400 mt-1">ข้อมูลถูกบันทึกลงฐานข้อมูลอัตโนมัติ (Auto-saved)</p>
       </div>
-      <div class="flex items-center gap-3">
-        <div class="text-right">
-          <p class="text-xs" style="color: var(--muted-foreground);">เก็บแล้ว</p>
-          <p class="font-bold" id="evidence-count" style="color: #10b981;">0/6</p>
-        </div>
-        <div class="font-mono font-bold px-3 py-1 rounded-lg text-sm" id="timer-ev" style="background: rgba(239,68,68,0.1); color: #ef4444;">25:00</div>
+      <div class="text-right">
+        <p class="text-xs text-slate-400">คะแนนปัจจุบัน</p>
+        <p class="font-bold text-2xl text-amber-400" id="nb-score">0</p>
       </div>
     </div>
 
-    <!-- Progress bar -->
-    <div class="rounded-full h-2 mb-5 overflow-hidden" style="background: var(--accent);">
-      <div id="ev-progress" class="progress-bar h-2 rounded-full" style="width: 0%; background: #10b981;"></div>
+    <!-- Collected Evidence List -->
+    <h3 class="font-prompt font-semibold text-lg mb-3 border-b border-slate-700 pb-2">📂 หลักฐานที่รวบรวมได้</h3>
+    <div id="collected-list" class="space-y-3 mb-8 min-h-[100px]">
+      <!-- JS Generated -->
+      <p class="text-slate-500 text-sm italic text-center py-4">ยังไม่พบหลักฐาน กลับไปที่กระดานเพื่อค้นหา</p>
     </div>
 
-    <!-- Evidence grid -->
-    <div class="grid grid-cols-2 gap-3 mb-4" id="evidence-grid">
-      <!-- Generated by JS -->
-    </div>
+    <!-- Conclusion Form -->
+    <h3 class="font-prompt font-semibold text-lg mb-3 border-b border-slate-700 pb-2">🎯 สรุปผลการสืบสวน</h3>
+    <div class="bg-slate-800 rounded-xl p-5 border border-slate-700">
+      <p class="text-sm mb-4">จากหลักฐานทั้งหมด ทีมของคุณคิดว่า <strong class="text-amber-400">สาเหตุหลัก</strong> ที่ทำให้คอมพิวเตอร์ช้าคืออะไร?</p>
+      
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-6" id="suspects-container">
+        <!-- JS Generated Options -->
+      </div>
 
-    <!-- Navigation buttons -->
-    <div class="flex gap-3 mt-4">
-      <button onclick="goToNotebook()" class="flex-1 py-3 rounded-xl font-semibold transition hover:opacity-80 active:scale-95" style="background: var(--card); border: 1px solid var(--border); color: var(--foreground);">
-        📓 สมุดไขคดี
+      <div class="mb-6">
+        <label class="block text-sm mb-2 text-slate-300">อธิบายเหตุผลประกอบ (วิเคราะห์จากหลักฐาน):</label>
+        <textarea id="reason-text" class="w-full bg-slate-900 border border-slate-600 rounded-lg p-3 text-sm text-white focus:border-blue-400 outline-none" rows="3" placeholder="พิมพ์เหตุผลของทีมที่นี่..."></textarea>
+      </div>
+
+      <button onclick="submitCase()" id="submit-btn" class="w-full py-4 rounded-xl font-prompt font-bold text-lg text-white bg-green-600 hover:bg-green-500 transition opacity-50 cursor-not-allowed" disabled>
+        <i class="fa-solid fa-gavel mr-2"></i> ปิดคดี และส่งรายงาน!
       </button>
-      <button onclick="goToLeaderboard()" class="flex-1 py-3 rounded-xl font-semibold transition hover:opacity-80 active:scale-95" style="background: var(--card); border: 1px solid var(--border); color: var(--foreground);">
-        🏆 คะแนน
-      </button>
+      <p id="submit-warn" class="text-center text-xs text-red-400 mt-2">ต้องเก็บหลักฐานอย่างน้อย 2 ชิ้น และเลือกสาเหตุก่อน</p>
     </div>
   </div>
 </div>
 
 <!-- ============================================================
-     SCREEN 3: DETECTIVE NOTEBOOK
+     SCREEN 4: LEADERBOARD & REVEAL
      ============================================================ -->
-<div id="screen-notebook" class="screen" style="background: var(--background);">
-  <div class="p-4 max-w-2xl mx-auto w-full">
-    <!-- Header -->
-    <div class="flex items-center justify-between mb-4">
-      <div class="flex items-center gap-2">
-        <button onclick="goToEvidence()" class="text-xl hover:opacity-70">←</button>
-        <div>
-          <h2 class="font-bold text-lg" style="color: var(--foreground);">📓 สมุดไขคดี</h2>
-          <p class="text-xs" style="color: var(--muted-foreground);">บันทึกข้อสรุปของทีมคุณ</p>
-        </div>
+<div id="screen-result" class="screen bg-slate-900">
+  <div class="p-6 max-w-2xl mx-auto w-full">
+    <div class="text-center mb-8">
+      <div class="text-6xl mb-4" id="result-emoji">🎉</div>
+      <h1 class="text-3xl font-prompt font-bold" id="result-title">ปิดคดีสำเร็จ!</h1>
+    </div>
+
+    <!-- DB Leaderboard Box -->
+    <div class="glass-panel rounded-2xl p-6 mb-8 border border-amber-500/50 shadow-[0_0_15px_rgba(245,158,11,0.2)]">
+      <div class="flex justify-between items-center mb-6">
+        <h2 class="font-prompt font-bold text-xl text-amber-400"><i class="fa-solid fa-trophy mr-2"></i> ตารางคะแนน (Leaderboard)</h2>
+        <span class="text-[10px] bg-slate-800 px-2 py-1 rounded text-slate-400">Live Database</span>
       </div>
-      <div class="font-mono font-bold px-3 py-1 rounded-lg text-sm" id="timer-nb" style="background: rgba(239,68,68,0.1); color: #ef4444;">25:00</div>
-    </div>
-
-    <!-- Tabs -->
-    <div class="flex gap-2 mb-4">
-      <button onclick="switchTab('clues')" id="tab-clues" class="tab-btn flex-1 py-2 rounded-xl text-sm font-semibold transition active" style="background: var(--primary); color: var(--primary-foreground);">🔍 หลักฐานที่เก็บ</button>
-      <button onclick="switchTab('analysis')" id="tab-analysis" class="tab-btn flex-1 py-2 rounded-xl text-sm font-semibold transition" style="background: var(--card); border: 1px solid var(--border); color: var(--foreground);">🧠 วิเคราะห์</button>
-      <button onclick="switchTab('conclusion')" id="tab-conclusion" class="tab-btn flex-1 py-2 rounded-xl text-sm font-semibold transition" style="background: var(--card); border: 1px solid var(--border); color: var(--foreground);">✅ ข้อสรุป</button>
-    </div>
-
-    <!-- Tab: Clues -->
-    <div id="tab-content-clues">
-      <div id="collected-evidence-list" class="space-y-2">
-        <p class="text-center py-8 text-sm" style="color: var(--muted-foreground);">ยังไม่มีหลักฐานที่เก็บได้<br>กลับไปค้นหาในห้องหลักฐาน</p>
+      
+      <div id="leaderboard-list" class="space-y-2">
+        <!-- JS Generated -->
       </div>
     </div>
 
-    <!-- Tab: Analysis -->
-    <div id="tab-content-analysis" class="hidden">
-      <div class="rounded-xl p-4 mb-3" style="background: var(--card); border: 1px solid var(--border);">
-        <p class="text-sm font-semibold mb-2" style="color: var(--foreground);">🔗 หลักฐานใดที่เชื่อมกัน?</p>
-        <textarea id="analysis-links" placeholder="เช่น CPU ทำงาน 98% เชื่อมกับอุณหภูมิสูง เพราะ..." class="w-full rounded-lg p-3 text-sm outline-none resize-none" rows="3" style="background: var(--background); border: 1px solid var(--border); color: var(--foreground);"></textarea>
-      </div>
-      <div class="rounded-xl p-4 mb-3" style="background: var(--card); border: 1px solid var(--border);">
-        <p class="text-sm font-semibold mb-2" style="color: var(--foreground);">🤔 ทีมคิดว่าสาเหตุหลักคืออะไร?</p>
-        <textarea id="analysis-cause" placeholder="เช่น ปัญหาน่าจะมาจาก..." class="w-full rounded-lg p-3 text-sm outline-none resize-none" rows="3" style="background: var(--background); border: 1px solid var(--border); color: var(--foreground);"></textarea>
+    <!-- Teacher Reveal -->
+    <div class="bg-blue-900/20 border border-blue-500/50 rounded-2xl p-6 mb-8">
+      <h3 class="font-prompt font-bold text-xl text-blue-400 mb-4"><i class="fa-solid fa-chalkboard-user mr-2"></i> สรุปคดีจากครู (ความรู้ที่ได้)</h3>
+      <div class="space-y-4 text-sm text-slate-300 leading-relaxed">
+        <p><strong class="text-white">1. CPU & Thermal Throttling:</strong> เมื่อโปรแกรม (เช่น ไวรัสขุดเหรียญ) กิน CPU 98% ทำให้เกิดความร้อนสูงสะสม เมื่อทะลุ 90°C ระบบจะใช้กลไกป้องกันตัวลดความเร็ว CPU ลงอัตโนมัติ (Throttling) ทำให้เครื่องกระตุก</p>
+        <p><strong class="text-white">2. RAM & Virtual Memory:</strong> การเปิด 50 แท็บพร้อมตัดต่อ ทำให้ RAM เต็ม ระบบต้องดึงพื้นที่ HDD มาทำ "Virtual Memory" (Paging file) ซึ่งอ่านเขียนช้ากว่า RAM หลายสิบเท่า</p>
       </div>
     </div>
 
-    <!-- Tab: Conclusion -->
-    <div id="tab-content-conclusion" class="hidden">
-      <div class="rounded-xl p-4 mb-3" style="background: var(--card); border: 1px solid var(--border);">
-        <p class="text-sm font-semibold mb-2" style="color: var(--foreground);">🕵️ สรุปคำตอบของทีม</p>
-        <p class="text-xs mb-3" style="color: var(--muted-foreground);">เกิดอะไรขึ้นกับคอมพิวเตอร์? และทำไม?</p>
-        <textarea id="conclusion-text" placeholder="เขียนสรุปคำตอบของทีมที่นี่..." class="w-full rounded-lg p-3 text-sm outline-none resize-none" rows="4" style="background: var(--background); border: 1px solid var(--border); color: var(--foreground);"></textarea>
-      </div>
-
-      <!-- Suspects selection -->
-      <div class="rounded-xl p-4 mb-4" style="background: var(--card); border: 1px solid var(--border);">
-        <p class="text-sm font-semibold mb-3" style="color: var(--foreground);">🎯 ระบุสาเหตุหลัก</p>
-        <div class="grid grid-cols-1 gap-2" id="suspect-list">
-          <!-- Generated by JS -->
-        </div>
-      </div>
-
-      <button onclick="submitAnswer()" class="w-full py-4 rounded-2xl font-bold text-lg text-white transition hover:opacity-90 active:scale-95" style="background: linear-gradient(135deg, #059669, #10b981);">
-        🎤 ส่งคำตอบและดูเฉลย!
-      </button>
-    </div>
-  </div>
-</div>
-
-<!-- ============================================================
-     SCREEN 4: LEADERBOARD
-     ============================================================ -->
-<div id="screen-leaderboard" class="screen" style="background: var(--background);">
-  <div class="p-4 max-w-xl mx-auto w-full">
-    <div class="flex items-center gap-2 mb-6">
-      <button onclick="goToEvidence()" class="text-xl hover:opacity-70">←</button>
-      <h2 class="font-bold text-xl" style="color: var(--foreground);">🏆 Leaderboard</h2>
-    </div>
-
-    <!-- Your team score -->
-    <div class="rounded-2xl p-5 mb-5 text-center relative overflow-hidden" style="background: linear-gradient(135deg, rgba(245,158,11,0.15), rgba(217,119,6,0.1)); border: 2px solid rgba(245,158,11,0.4);">
-      <div class="absolute top-0 left-0 w-full h-1" style="background: linear-gradient(90deg, #d97706, #f59e0b, #d97706);"></div>
-      <p class="text-sm mb-1" style="color: var(--muted-foreground);">คะแนนของคุณ</p>
-      <p class="font-bold text-2xl mb-1" id="lb-team-name" style="color: #f59e0b;">-</p>
-      <p class="font-bold text-5xl" id="lb-score" style="color: var(--foreground);">0</p>
-      <p class="text-xs mt-1" style="color: var(--muted-foreground);">คะแนน</p>
-    </div>
-
-    <!-- Simulated leaderboard -->
-    <div class="rounded-2xl overflow-hidden mb-5" style="background: var(--card); border: 1px solid var(--border);">
-      <div class="px-4 py-3" style="border-bottom: 1px solid var(--border);">
-        <p class="font-semibold text-sm" style="color: var(--muted-foreground);">อันดับทีมทั้งหมด</p>
-      </div>
-      <div id="leaderboard-list" class="divide-y" style="border-color: var(--border);">
-        <!-- Generated by JS -->
-      </div>
-    </div>
-
-    <!-- Scoring rules -->
-    <div class="rounded-xl p-4" style="background: var(--card); border: 1px solid var(--border);">
-      <p class="font-semibold text-sm mb-3" style="color: var(--foreground);">⭐ วิธีได้คะแนน</p>
-      <div class="space-y-2 text-xs" style="color: var(--muted-foreground);">
-        <div class="flex justify-between"><span>🔍 เก็บหลักฐานแต่ละชิ้น</span><span class="font-bold" style="color: #10b981;">+10 คะแนน</span></div>
-        <div class="flex justify-between"><span>✅ คำตอบถูกต้อง</span><span class="font-bold" style="color: #10b981;">+50 คะแนน</span></div>
-        <div class="flex justify-between"><span>⏱ ทำเสร็จก่อนเวลา (ต่อนาที)</span><span class="font-bold" style="color: #10b981;">+5 คะแนน</span></div>
-        <div class="flex justify-between"><span>📝 เขียนวิเคราะห์ครบถ้วน</span><span class="font-bold" style="color: #10b981;">+20 คะแนน</span></div>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- ============================================================
-     SCREEN 5: REVEAL / ANSWER
-     ============================================================ -->
-<div id="screen-reveal" class="screen" style="background: var(--background);">
-  <div class="p-4 max-w-2xl mx-auto w-full">
-    <!-- Header -->
-    <div class="text-center mb-6">
-      <div class="text-5xl mb-2">🎉</div>
-      <h2 class="text-2xl font-bold" style="color: var(--foreground);">เฉลยคดี!</h2>
-      <p class="text-sm mt-1" style="color: var(--muted-foreground);">มาดูกันว่าเกิดอะไรขึ้นจริง ๆ</p>
-    </div>
-
-    <!-- Score result -->
-    <div class="rounded-2xl p-5 text-center mb-5 relative overflow-hidden" id="result-card">
-      <!-- Content generated by JS -->
-    </div>
-
-    <!-- Correct answer -->
-    <div class="rounded-2xl p-5 mb-4" style="background: rgba(16,185,129,0.08); border: 2px solid rgba(16,185,129,0.3);">
-      <div class="flex items-center gap-2 mb-3">
-        <span class="text-2xl">🔓</span>
-        <h3 class="font-bold text-lg" style="color: #10b981;">คำตอบที่ถูกต้อง</h3>
-      </div>
-      <p class="font-bold mb-2" style="color: var(--foreground);">สาเหตุ: CPU ทำงานหนักเกินไปร่วมกับการระบายความร้อนที่ไม่ดี</p>
-      <p class="text-sm leading-relaxed" style="color: var(--muted-foreground);">
-        คอมพิวเตอร์ช้าลงเพราะมีโปรแกรม Background ที่กิน CPU สูงถึง 98% ทำให้อุณหภูมิ CPU ขึ้นสูง จนระบบ Thermal Throttling เข้ามาลดความเร็ว CPU โดยอัตโนมัติเพื่อป้องกันความเสียหาย ประกอบกับ RAM เต็มจาก Tab เปิดค้างจำนวนมาก ทำให้ระบบต้องใช้ Virtual Memory ซึ่งช้ากว่า RAM จริงมาก
-      </p>
-    </div>
-
-    <!-- Lesson summary -->
-    <div class="rounded-2xl p-5 mb-4" style="background: var(--card); border: 1px solid var(--border);">
-      <h3 class="font-bold mb-4" style="color: var(--foreground);">📚 สิ่งที่เรียนรู้จากคดีนี้</h3>
-      <div class="space-y-3">
-        <div class="flex items-start gap-3">
-          <span class="text-xl mt-0.5">🧠</span>
-          <div>
-            <p class="font-semibold text-sm" style="color: var(--foreground);">CPU (Central Processing Unit)</p>
-            <p class="text-xs leading-relaxed" style="color: var(--muted-foreground);">หน่วยประมวลผลกลาง เมื่อ CPU ทำงานหนักเกิน 90% ระบบจะช้าลงอย่างเห็นได้ชัด</p>
-          </div>
-        </div>
-        <div class="flex items-start gap-3">
-          <span class="text-xl mt-0.5">💾</span>
-          <div>
-            <p class="font-semibold text-sm" style="color: var(--foreground);">RAM (Random Access Memory)</p>
-            <p class="text-xs leading-relaxed" style="color: var(--muted-foreground);">หน่วยความจำชั่วคราว เมื่อ RAM เต็ม ระบบจะสลับไปใช้ Virtual Memory บน HDD ซึ่งช้ากว่ามาก</p>
-          </div>
-        </div>
-        <div class="flex items-start gap-3">
-          <span class="text-xl mt-0.5">🌡️</span>
-          <div>
-            <p class="font-semibold text-sm" style="color: var(--foreground);">Thermal Throttling</p>
-            <p class="text-xs leading-relaxed" style="color: var(--muted-foreground);">เมื่อ CPU ร้อนเกินไป ระบบจะลดความเร็วอัตโนมัติเพื่อป้องกันความเสียหาย</p>
-          </div>
-        </div>
-        <div class="flex items-start gap-3">
-          <span class="text-xl mt-0.5">⚡</span>
-          <div>
-            <p class="font-semibold text-sm" style="color: var(--foreground);">Cache Memory</p>
-            <p class="text-xs leading-relaxed" style="color: var(--muted-foreground);">หน่วยความจำเร็วพิเศษใน CPU ช่วยลดเวลาดึงข้อมูลจาก RAM</p>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Your answer review -->
-    <div class="rounded-2xl p-5 mb-6" style="background: var(--card); border: 1px solid var(--border);">
-      <h3 class="font-bold mb-3" style="color: var(--foreground);">📝 คำตอบของทีมคุณ</h3>
-      <p class="text-sm italic" id="review-conclusion" style="color: var(--muted-foreground);">-</p>
-    </div>
-
-    <!-- Play again -->
-    <button onclick="playAgain()" class="w-full py-4 rounded-2xl font-bold text-xl text-white transition hover:opacity-90 active:scale-95" style="background: linear-gradient(135deg, #d97706, #f59e0b);">
-      🔄 เล่นใหม่อีกครั้ง
+    <button onclick="resetGame()" class="w-full py-4 rounded-xl font-prompt font-bold text-white bg-slate-700 hover:bg-slate-600 transition">
+      <i class="fa-solid fa-rotate-right mr-2"></i> เล่นใหม่อีกครั้ง / ล้างข้อมูล
     </button>
   </div>
 </div>
 
 <!-- ============================================================
-     EVIDENCE MODAL
+     MINIGAME MODALS
      ============================================================ -->
-<div id="evidence-modal" class="modal-overlay">
-  <div class="modal-box rounded-2xl p-6" style="background: var(--card); border: 1px solid var(--border);">
-    <div class="flex items-start gap-3 mb-4">
-      <div id="modal-icon" class="text-4xl">🔍</div>
-      <div class="flex-1">
-        <h3 id="modal-title" class="font-bold text-lg" style="color: var(--foreground);">หลักฐาน</h3>
-        <p id="modal-type" class="text-xs" style="color: var(--muted-foreground);">ประเภท: -</p>
+
+<!-- Minigame 1: Task Manager -->
+<div id="modal-taskmgr" class="modal-overlay">
+  <div class="modal-box bg-slate-800 rounded-xl overflow-hidden border border-slate-600">
+    <div class="fake-window">
+      <div class="fake-titlebar"><span>Windows Task Manager</span> <span>✕</span></div>
+      <div class="fake-content">
+        <div class="flex justify-between text-xs font-bold border-b border-slate-300 pb-1 mb-2">
+          <span class="w-1/2">Image Name</span><span class="w-1/4 text-right">CPU</span><span class="w-1/4 text-right">Memory</span>
+        </div>
+        <div class="task-row" onclick="failTask()"><span>chrome.exe</span><span class="text-right">2%</span><span class="text-right">1,200 MB</span></div>
+        <div class="task-row" onclick="failTask()"><span>explorer.exe</span><span class="text-right">1%</span><span class="text-right">45 MB</span></div>
+        <div class="task-row task-high" onclick="collectClue('clue1')"><span>svchost_update.exe</span><span class="text-right">98%</span><span class="text-right">4,500 MB</span></div>
+        <div class="task-row" onclick="failTask()"><span>system</span><span class="text-right">0%</span><span class="text-right">20 MB</span></div>
       </div>
     </div>
-    <div id="modal-content" class="rounded-xl p-4 mb-4 text-sm leading-relaxed" style="background: var(--background); border: 1px solid var(--border); color: var(--foreground);">
-    </div>
-    <div id="modal-clue" class="rounded-xl p-3 mb-4 text-sm" style="background: rgba(245,158,11,0.1); border: 1px solid rgba(245,158,11,0.3); color: #f59e0b;">
-    </div>
-    <div class="flex gap-3">
-      <button onclick="closeModal()" class="flex-1 py-3 rounded-xl font-semibold transition hover:opacity-80" style="background: var(--background); border: 1px solid var(--border); color: var(--foreground);">
-        ปิด
-      </button>
-      <button id="collect-btn" onclick="collectEvidence()" class="flex-1 py-3 rounded-xl font-semibold text-white transition hover:opacity-90" style="background: #10b981;">
-        ✓ เก็บหลักฐาน (+10 คะแนน)
-      </button>
+    <div class="p-4 bg-slate-900">
+      <p class="text-sm text-amber-400 mb-4"><i class="fa-solid fa-circle-info mr-2"></i> ค้นหาโปรแกรมที่ใช้ทรัพยากรผิดปกติและ <strong>คลิก</strong> ที่ชื่อนั้นเพื่อเก็บหลักฐาน!</p>
+      <button onclick="closeModal()" class="w-full py-2 bg-slate-700 rounded text-sm hover:bg-slate-600">ปิด</button>
     </div>
   </div>
 </div>
 
-<!-- ============================================================
-     JAVASCRIPT
-     ============================================================ -->
+<!-- Minigame 2: Temperature -->
+<div id="modal-temp" class="modal-overlay">
+  <div class="modal-box bg-slate-900 rounded-xl p-6 border border-slate-700 text-center">
+    <h3 class="font-prompt font-bold text-lg mb-4">เซ็นเซอร์ความร้อนเมนบอร์ด</h3>
+    <div class="relative w-32 h-32 mx-auto mb-4 flex items-center justify-center rounded-full border-4 border-red-500 shadow-[0_0_20px_rgba(239,68,68,0.5)]">
+      <span class="text-4xl font-mono font-bold text-red-500">95°C</span>
+    </div>
+    <p class="text-sm text-slate-300 mb-4">ระบบแจ้งเตือน: อุณหภูมิ CPU ทะลุขีดจำกัดปลอดภัย (Thermal Limit). CPU ลดคล็อกสปีดลง 60% เพื่อป้องกันการไหม้</p>
+    <button onclick="collectClue('clue2')" class="w-full py-3 bg-green-600 hover:bg-green-500 rounded-xl font-bold text-white transition">✓ บันทึกหลักฐาน (+10 pts)</button>
+  </div>
+</div>
+
+<!-- Minigame 3: RAM Note -->
+<div id="modal-ram" class="modal-overlay">
+  <div class="modal-box bg-[#fef08a] rounded-xl p-8 text-black shadow-2xl" style="font-family: 'Comic Sans MS', cursive;">
+    <h3 class="font-bold text-xl mb-4 border-b border-black/20 pb-2">คำให้การนักเรียน</h3>
+    <p class="text-lg leading-relaxed mb-6">"หนูเปิด Chrome ไว้หาข้อมูลทำรายงานประมาณ 50 แท็บค่ะ แล้วก็เปิด Photoshop กับ Premiere Pro ทิ้งไว้ด้วย เครื่องมันก็เริ่มอืดๆ กึกๆ แล้วไฟที่เคส (ไฟ HDD) ก็กระพริบแดงรัวๆ ไม่หยุดเลยค่ะ แงงง 😭"</p>
+    <button onclick="collectClue('clue3')" class="w-full py-3 bg-blue-600 hover:bg-blue-500 rounded-xl font-prompt font-bold text-white transition shadow">✓ เก็บเข้าแฟ้มคดี</button>
+  </div>
+</div>
+
+<!-- Minigame 4: Terminal -->
+<div id="modal-terminal" class="modal-overlay">
+  <div class="modal-box bg-slate-800 rounded-xl overflow-hidden border border-slate-600">
+    <div class="fake-titlebar bg-slate-900 border-b border-slate-700"><span>Administrator: Command Prompt</span></div>
+    <div class="terminal" id="term-display">
+      Microsoft Windows [Version 10.0.19045]<br>
+      (c) Microsoft Corporation. All rights reserved.<br><br>
+      C:\Windows\System32> ระบบล็อกไฟล์ต้องการรหัสผ่าน (HINT: อุณหภูมิ CPU สี่หลัก)<br>
+    </div>
+    <div class="bg-black p-2 flex border-t border-slate-800">
+      <span class="text-green-500 font-mono mr-2">C:\></span>
+      <input type="text" id="term-input" class="term-input" autocomplete="off" placeholder="ใส่รหัส 4 หลัก แล้วกด Enter">
+    </div>
+    <div class="p-3 bg-slate-900 border-t border-slate-700 flex justify-end">
+      <button onclick="closeModal()" class="px-4 py-1 bg-slate-700 rounded text-xs hover:bg-slate-600">ปิด</button>
+    </div>
+  </div>
+</div>
+
 <script>
-  // ─── STATE ────────────────────────────────────────────────
-  let state = {
-    teamName: '',
-    memberCount: 4,
-    score: 0,
-    collectedEvidence: new Set(),
-    timerSeconds: 25 * 60,
-    timerInterval: null,
-    activeModal: null,
-    selectedSuspect: null,
-    gameStarted: false,
-    gameOver: false,
-  };
-
-  // Simulated other teams for leaderboard
-  const otherTeams = [
-    { name: '🦁 ทีมสิงห์', score: 95 },
-    { name: '🐯 ทีมเสือ', score: 75 },
-    { name: '🐲 ทีมมังกร', score: 60 },
-    { name: '🦋 ทีมผีเสื้อ', score: 45 },
-  ];
-
-  // ─── EVIDENCE DATA ─────────────────────────────────────────
-  const evidenceList = [
-    {
-      id: 'cpu',
-      icon: '🖥️',
-      title: 'รายงาน CPU Usage',
-      type: 'ข้อมูลระบบ',
-      content: 'Task Manager แสดงว่า CPU ทำงานที่ 98% อย่างต่อเนื่อง มีโปรแกรม "svchost.exe" ใช้งาน CPU สูงถึง 70% โดยไม่ทราบสาเหตุ',
-      clue: '💡 เบาะแส: CPU ที่ทำงานหนักอาจทำให้ระบบช้า และยังทำให้เกิดความร้อนสูงด้วย',
-    },
-    {
-      id: 'ram',
-      icon: '💾',
-      title: 'สถานะ RAM',
-      type: 'ข้อมูลระบบ',
-      content: 'RAM 8GB ถูกใช้ไปแล้ว 7.8GB (98%) พบว่ามีแท็บเบราว์เซอร์เปิดค้างถึง 47 แท็บ และโปรแกรม Photoshop ที่เปิดทิ้งไว้ตั้งแต่เช้า',
-      clue: '💡 เบาะแส: เมื่อ RAM เต็ม ระบบจะสลับไปใช้ Virtual Memory บน HDD ซึ่งช้ากว่า RAM มาก',
-    },
-    {
-      id: 'temp',
-      icon: '🌡️',
-      title: 'บันทึกอุณหภูมิ CPU',
-      type: 'ข้อมูลฮาร์ดแวร์',
-      content: 'อุณหภูมิ CPU อยู่ที่ 95°C (ปกติควรต่ำกว่า 80°C) พัดลมระบายความร้อนดังผิดปกติ พบฝุ่นสะสมอยู่ที่ช่องระบาย',
-      clue: '💡 เบาะแส: เมื่อ CPU ร้อนเกินไป ระบบจะใช้ Thermal Throttling ลดความเร็วอัตโนมัติ',
-    },
-    {
-      id: 'hdd',
-      icon: '💿',
-      title: 'ประสิทธิภาพ HDD',
-      type: 'ข้อมูลฮาร์ดแวร์',
-      content: 'HDD แสดง LED กะพริบตลอดเวลา ระบบกำลังอ่าน/เขียนข้อมูลอย่างหนัก พื้นที่ว่างเหลือเพียง 2% (ฟรี 4GB จาก 200GB)',
-      clue: '💡 เบาะแส: HDD เต็มทำให้ไม่มีพื้นที่สำหรับ Virtual Memory และ Temp files',
-    },
-    {
-      id: 'startup',
-      icon: '🚀',
-      title: 'รายการโปรแกรม Startup',
-      type: 'การตั้งค่าระบบ',
-      content: 'พบโปรแกรมที่เปิดอัตโนมัติเมื่อเปิดเครื่องถึง 23 โปรแกรม รวมถึง Antivirus Scan ที่ถูกตั้งให้รันตอนเที่ยง ซึ่งตรงกับเวลาที่คอมพิวเตอร์เริ่มช้า',
-      clue: '💡 เบาะแส: โปรแกรม Startup มากเกินไปแย่งใช้ทรัพยากรระบบ',
-    },
-    {
-      id: 'log',
-      icon: '📋',
-      title: 'บันทึก Event Log',
-      type: 'บันทึกระบบ',
-      content: 'Event Log แสดง Warning: "Windows Defender full scan started at 12:00" และ Error: "Low virtual memory" เวลา 12:15 ซึ่งตรงกับเวลาที่ปัญหาเริ่มต้น',
-      clue: '💡 เบาะแส: Windows Defender เริ่ม Scan พร้อมกันกับที่ Virtual Memory หมดพอดี',
-    },
-  ];
-
-  // ─── SUSPECT OPTIONS ───────────────────────────────────────
-  const suspects = [
-    { id: 'cpu-heat', label: '🌡️ CPU ร้อนเกิน + Thermal Throttling', correct: true },
-    { id: 'ram-full', label: '💾 RAM เต็ม + Virtual Memory', correct: true },
-    { id: 'virus', label: '🦠 ไวรัส / Malware', correct: false },
-    { id: 'hdd-bad', label: '💿 HDD เสีย', correct: false },
-    { id: 'power', label: '⚡ ไฟฟ้าไม่เพียงพอ', correct: false },
-  ];
-
-  // ─── TEAM SETUP ─────────────────────────────────────────────
-  function setTeamName(name) {
-    document.getElementById('team-name-input').value = name;
+  // ─── DATABASE SIMULATION (LocalStorage) ──────────────────────
+  class LocalDB {
+    static save(key, data) { localStorage.setItem(`mystery_${key}`, JSON.stringify(data)); }
+    static load(key, defaultVal) { 
+      const item = localStorage.getItem(`mystery_${key}`);
+      return item ? JSON.parse(item) : defaultVal;
+    }
+    static clear() {
+      Object.keys(localStorage).forEach(k => { if(k.startsWith('mystery_')) localStorage.removeItem(k); });
+    }
   }
 
-  function setMemberCount(btn, count) {
-    document.querySelectorAll('.member-btn').forEach(b => {
-      b.style.background = 'var(--accent)';
-      b.style.borderColor = 'var(--border)';
-      b.style.color = 'var(--foreground)';
-    });
-    btn.style.background = '#f59e0b';
-    btn.style.borderColor = '#d97706';
-    btn.style.color = 'white';
-    state.memberCount = count;
+  // ─── GAME STATE ─────────────────────────────────────────────
+  let state = LocalDB.load('state', {
+    teamName: '',
+    score: 0,
+    clues: [],
+    time: 20 * 60,
+    started: false,
+    finished: false
+  });
+
+  const ALL_CLUES = {
+    'clue1': { icon: '⚙️', title: 'Task Manager (svchost_update)', desc: 'พบโปรแกรมแปลกปลอมกิน CPU 98% ตลอดเวลา' },
+    'clue2': { icon: '🌡️', title: 'อุณหภูมิ CPU 95°C', desc: 'ความร้อนสูงเกิน ทำให้เกิด Thermal Throttling ลดความเร็วเครื่อง' },
+    'clue3': { icon: '💾', title: 'RAM เต็ม 100%', desc: 'เปิดโปรแกรมหนักพร้อมกัน ทำให้ RAM ไม่พอและต้องใช้ HDD แทน (Paging)' },
+    'clue4': { icon: '📋', title: 'System Error Log', desc: 'HDD ทำงานหนัก 100% จากการทำ Virtual memory สลับไปมา' }
+  };
+
+  const SUSPECTS = [
+    { id: 's1', label: 'CPU ร้อนเกิน และ Thermal Throttling', correct: true },
+    { id: 's2', label: 'RAM เต็ม ต้องใช้ Virtual Memory จาก HDD', correct: true },
+    { id: 's3', label: 'ไวรัสซ่อนตัวลบไฟล์ระบบ', correct: false },
+    { id: 's4', label: 'พาวเวอร์ซัพพลาย (PSU) จ่ายไฟไม่พอ', correct: false }
+  ];
+
+  let timerInterval;
+
+  // ─── INIT ───────────────────────────────────────────────────
+  function init() {
+    if(state.finished) { showScreen('screen-result'); renderResult(); return; }
+    if(state.started) { showScreen('screen-evidence'); startTimer(); updateUI(); return; }
+    showScreen('screen-team');
+  }
+
+  function clearDatabase() {
+    if(confirm('แน่ใจหรือไม่ว่าต้องการล้างข้อมูลความคืบหน้าทั้งหมด?')) {
+      LocalDB.clear();
+      location.reload();
+    }
+  }
+
+  // ─── NAVIGATION ─────────────────────────────────────────────
+  function showScreen(id) {
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
+    window.scrollTo(0,0);
   }
 
   function startGame() {
     const name = document.getElementById('team-name-input').value.trim();
-    if (!name) {
-      document.getElementById('team-name-input').focus();
-      document.getElementById('team-name-input').style.borderColor = '#ef4444';
-      setTimeout(() => { document.getElementById('team-name-input').style.borderColor = 'var(--border)'; }, 2000);
-      return;
-    }
+    if(!name) return alert('กรุณาตั้งชื่อทีมก่อนเริ่มสืบสวน!');
     state.teamName = name;
-    state.gameStarted = true;
+    state.started = true;
+    LocalDB.save('state', state);
+    
     document.getElementById('story-team-name').textContent = name;
-    document.getElementById('story-score').textContent = '0';
     showScreen('screen-story');
-    startTimer();
-    renderEvidenceGrid();
-    renderSuspects();
-  }
-
-  // ─── TIMER ──────────────────────────────────────────────────
-  function startTimer() {
-    if (state.timerInterval) clearInterval(state.timerInterval);
-    state.timerInterval = setInterval(() => {
-      if (state.gameOver) { clearInterval(state.timerInterval); return; }
-      state.timerSeconds--;
-      if (state.timerSeconds <= 0) {
-        state.timerSeconds = 0;
-        updateTimerDisplays();
-        clearInterval(state.timerInterval);
-        submitAnswer(true);
-        return;
-      }
-      updateTimerDisplays();
-    }, 1000);
-  }
-
-  function updateTimerDisplays() {
-    const m = Math.floor(state.timerSeconds / 60).toString().padStart(2, '0');
-    const s = (state.timerSeconds % 60).toString().padStart(2, '0');
-    const text = `${m}:${s}`;
-    ['timer-display', 'timer-ev', 'timer-nb'].forEach(id => {
-      const el = document.getElementById(id);
-      if (el) el.textContent = text;
-    });
-    // Color warning
-    const color = state.timerSeconds < 300 ? '#ef4444' : state.timerSeconds < 600 ? '#f59e0b' : '#ef4444';
-    ['timer-display', 'timer-ev', 'timer-nb'].forEach(id => {
-      const el = document.getElementById(id);
-      if (el) el.style.color = color;
-    });
-  }
-
-  // ─── SCREEN NAVIGATION ──────────────────────────────────────
-  function showScreen(id) {
-    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-    document.getElementById(id).classList.add('active');
-    window.scrollTo(0, 0);
   }
 
   function goToEvidence() {
     showScreen('screen-evidence');
-    renderCollectedList();
+    if(!timerInterval) startTimer();
+    updateUI();
   }
 
   function goToNotebook() {
     showScreen('screen-notebook');
-    renderCollectedList();
+    renderNotebook();
   }
 
-  function goToLeaderboard() {
-    showScreen('screen-leaderboard');
-    renderLeaderboard();
+  // ─── GAME LOGIC ─────────────────────────────────────────────
+  function startTimer() {
+    timerInterval = setInterval(() => {
+      if(state.time > 0 && !state.finished) {
+        state.time--;
+        LocalDB.save('state', state);
+        const m = String(Math.floor(state.time/60)).padStart(2,'0');
+        const s = String(state.time%60).padStart(2,'0');
+        document.getElementById('timer-display').textContent = `${m}:${s}`;
+        document.getElementById('timer-ev').textContent = `${m}:${s}`;
+        document.getElementById('timer-nb').textContent = `${m}:${s}`;
+      }
+    }, 1000);
   }
 
-  // ─── EVIDENCE GRID ──────────────────────────────────────────
-  function renderEvidenceGrid() {
-    const grid = document.getElementById('evidence-grid');
-    grid.innerHTML = '';
-    evidenceList.forEach((ev, i) => {
-      const collected = state.collectedEvidence.has(ev.id);
-      const div = document.createElement('div');
-      div.className = `evidence-card rounded-2xl p-4 ${collected ? 'collected' : ''}`;
-      div.style.cssText = `background: var(--card); border: 2px solid ${collected ? '#10b981' : 'var(--border)'};`;
-      div.onclick = () => openModal(i);
-      div.innerHTML = `
-        <div class="badge">✓</div>
-        <div class="text-3xl mb-2">${ev.icon}</div>
-        <p class="font-bold text-sm leading-tight" style="color: var(--foreground);">${ev.title}</p>
-        <p class="text-xs mt-1" style="color: var(--muted-foreground);">${ev.type}</p>
-        ${collected ? `<div class="mt-2 text-xs font-semibold" style="color: #10b981;">✓ เก็บแล้ว</div>` : `<div class="mt-2 text-xs" style="color: var(--muted-foreground);">คลิกเพื่อตรวจสอบ</div>`}
-      `;
-      grid.appendChild(div);
-    });
-    updateEvidenceCount();
-  }
-
-  function updateEvidenceCount() {
-    const n = state.collectedEvidence.size;
-    const total = evidenceList.length;
-    document.getElementById('evidence-count').textContent = `${n}/${total}`;
-    document.getElementById('ev-progress').style.width = `${(n / total) * 100}%`;
-  }
-
-  // ─── MODAL ──────────────────────────────────────────────────
-  let currentModalIdx = null;
-
-  function openModal(idx) {
-    const ev = evidenceList[idx];
-    currentModalIdx = idx;
-    document.getElementById('modal-icon').textContent = ev.icon;
-    document.getElementById('modal-title').textContent = ev.title;
-    document.getElementById('modal-type').textContent = `ประเภท: ${ev.type}`;
-    document.getElementById('modal-content').textContent = ev.content;
-    document.getElementById('modal-clue').textContent = ev.clue;
-
-    const collectBtn = document.getElementById('collect-btn');
-    if (state.collectedEvidence.has(ev.id)) {
-      collectBtn.textContent = '✓ เก็บแล้ว';
-      collectBtn.style.background = '#059669';
-      collectBtn.disabled = true;
-    } else {
-      collectBtn.textContent = '✓ เก็บหลักฐาน (+10 คะแนน)';
-      collectBtn.style.background = '#10b981';
-      collectBtn.disabled = false;
+  function openMinigame(type) {
+    document.getElementById('modal-'+type).classList.add('open');
+    if(type === 'terminal') {
+      setTimeout(() => document.getElementById('term-input').focus(), 100);
     }
-
-    document.getElementById('evidence-modal').classList.add('open');
   }
 
   function closeModal() {
-    document.getElementById('evidence-modal').classList.remove('open');
-    currentModalIdx = null;
+    document.querySelectorAll('.modal-overlay').forEach(m => m.classList.remove('open'));
   }
 
-  function collectEvidence() {
-    if (currentModalIdx === null) return;
-    const ev = evidenceList[currentModalIdx];
-    if (!state.collectedEvidence.has(ev.id)) {
-      state.collectedEvidence.add(ev.id);
-      state.score += 10;
-      renderEvidenceGrid();
-      renderCollectedList();
+  function failTask() {
+    alert('โปรแกรมนี้ใช้ทรัพยากรปกติ ไม่ใช่ต้นเหตุ!');
+  }
+
+  function collectClue(clueId) {
+    if(!state.clues.includes(clueId)) {
+      state.clues.push(clueId);
+      state.score += 20;
+      LocalDB.save('state', state);
+      updateUI();
+      
+      // Visual feedback
+      const card = document.getElementById('card-'+clueId);
+      if(card) {
+        card.classList.add('collected');
+        card.onclick = null; // Disable click
+      }
     }
     closeModal();
   }
 
-  // ─── COLLECTED LIST ──────────────────────────────────────────
-  function renderCollectedList() {
-    const list = document.getElementById('collected-evidence-list');
-    if (state.collectedEvidence.size === 0) {
-      list.innerHTML = '<p class="text-center py-8 text-sm" style="color: var(--muted-foreground);">ยังไม่มีหลักฐานที่เก็บได้<br>กลับไปค้นหาในห้องหลักฐาน</p>';
-      return;
-    }
-    list.innerHTML = '';
-    evidenceList.filter(ev => state.collectedEvidence.has(ev.id)).forEach(ev => {
-      const div = document.createElement('div');
-      div.className = 'rounded-xl p-3 flex items-start gap-3';
-      div.style.cssText = 'background: var(--card); border: 1px solid #10b981;';
-      div.innerHTML = `
-        <span class="text-2xl">${ev.icon}</span>
-        <div>
-          <p class="font-semibold text-sm" style="color: var(--foreground);">${ev.title}</p>
-          <p class="text-xs mt-1 leading-relaxed" style="color: var(--muted-foreground);">${ev.clue}</p>
-        </div>
-      `;
-      list.appendChild(div);
-    });
-  }
-
-  // ─── SUSPECTS ────────────────────────────────────────────────
-  function renderSuspects() {
-    const list = document.getElementById('suspect-list');
-    list.innerHTML = '';
-    suspects.forEach(s => {
-      const btn = document.createElement('button');
-      btn.className = 'w-full text-left rounded-xl px-4 py-3 text-sm font-semibold transition';
-      btn.style.cssText = 'background: var(--background); border: 2px solid var(--border); color: var(--foreground);';
-      btn.textContent = s.label;
-      btn.onclick = () => selectSuspect(s.id, btn);
-      btn.dataset.sid = s.id;
-      list.appendChild(btn);
-    });
-  }
-
-  function selectSuspect(id, btn) {
-    state.selectedSuspect = id;
-    document.querySelectorAll('#suspect-list button').forEach(b => {
-      b.style.background = 'var(--background)';
-      b.style.borderColor = 'var(--border)';
-    });
-    btn.style.background = 'rgba(245,158,11,0.15)';
-    btn.style.borderColor = '#f59e0b';
-  }
-
-  // ─── TABS ────────────────────────────────────────────────────
-  function switchTab(tab) {
-    ['clues', 'analysis', 'conclusion'].forEach(t => {
-      document.getElementById(`tab-content-${t}`).classList.toggle('hidden', t !== tab);
-      const btn = document.getElementById(`tab-${t}`);
-      if (t === tab) {
-        btn.style.background = 'var(--primary)';
-        btn.style.color = 'var(--primary-foreground)';
-        btn.style.border = 'none';
-      } else {
-        btn.style.background = 'var(--card)';
-        btn.style.color = 'var(--foreground)';
-        btn.style.border = '1px solid var(--border)';
+  function updateUI() {
+    document.getElementById('evidence-count').textContent = `${state.clues.length}/4`;
+    state.clues.forEach(id => {
+      const card = document.getElementById('card-'+id);
+      if(card) {
+        card.classList.add('collected');
+        card.onclick = null;
       }
     });
   }
 
-  // ─── LEADERBOARD ─────────────────────────────────────────────
-  function renderLeaderboard() {
-    document.getElementById('lb-team-name').textContent = state.teamName;
-    document.getElementById('lb-score').textContent = state.score;
+  // Terminal logic
+  document.getElementById('term-input').addEventListener('keypress', function(e) {
+    if(e.key === 'Enter') {
+      const val = this.value.trim();
+      const display = document.getElementById('term-display');
+      display.innerHTML += `<br><span class="text-white">C:\\> ${val}</span><br>`;
+      
+      if(val === '0095') {
+        display.innerHTML += `<span class="text-amber-400">ACCESS GRANTED.</span><br>Error Log: Warning - Virtual memory limit reached. HDD usage 100%. Paging file thrashing detected.<br>`;
+        this.disabled = true;
+        setTimeout(() => collectClue('clue4'), 2000);
+      } else {
+        display.innerHTML += `<span class="text-red-500">ACCESS DENIED. Invalid PIN.</span><br>`;
+        this.value = '';
+      }
+      display.scrollTop = display.scrollHeight;
+    }
+  });
 
-    // Merge and sort
-    const all = [
-      { name: state.teamName, score: state.score, isMe: true },
-      ...otherTeams,
-    ].sort((a, b) => b.score - a.score);
+  // ─── NOTEBOOK ───────────────────────────────────────────────
+  function renderNotebook() {
+    document.getElementById('nb-team-name').textContent = state.teamName;
+    document.getElementById('nb-score').textContent = state.score;
 
-    const medals = ['🥇', '🥈', '🥉'];
-    const list = document.getElementById('leaderboard-list');
-    list.innerHTML = '';
-    all.forEach((team, i) => {
-      const row = document.createElement('div');
-      row.className = 'leaderboard-row flex items-center justify-between px-4 py-3';
-      row.innerHTML = `
-        <div class="flex items-center gap-3">
-          <span class="text-xl font-bold w-8">${medals[i] || `#${i + 1}`}</span>
-          <span class="font-semibold text-sm ${team.isMe ? '' : ''}" style="color: ${team.isMe ? '#f59e0b' : 'var(--foreground)'};">${team.name}${team.isMe ? ' ← คุณ' : ''}</span>
+    // Render Clues
+    const list = document.getElementById('collected-list');
+    if(state.clues.length === 0) {
+      list.innerHTML = '<p class="text-slate-500 text-sm italic text-center py-4">ยังไม่พบหลักฐาน กลับไปที่กระดานเพื่อค้นหา</p>';
+    } else {
+      list.innerHTML = state.clues.map(id => `
+        <div class="bg-slate-800 p-3 rounded-lg border border-slate-600 flex items-start gap-3 animate-[fadeIn_0.3s]">
+          <span class="text-2xl">${ALL_CLUES[id].icon}</span>
+          <div>
+            <p class="font-bold text-white text-sm">${ALL_CLUES[id].title}</p>
+            <p class="text-xs text-slate-400 mt-1">${ALL_CLUES[id].desc}</p>
+          </div>
         </div>
-        <span class="font-bold text-lg" style="color: ${team.isMe ? '#f59e0b' : 'var(--foreground)'};">${team.score}</span>
-      `;
-      list.appendChild(row);
-    });
+      `).join('');
+    }
+
+    // Render Suspects Form
+    const suspectsDiv = document.getElementById('suspects-container');
+    suspectsDiv.innerHTML = SUSPECTS.map(s => `
+      <label class="flex items-center gap-3 p-3 rounded-lg border border-slate-600 cursor-pointer hover:bg-slate-700 transition suspect-lbl">
+        <input type="checkbox" name="suspect" value="${s.id}" class="w-4 h-4 text-amber-500 bg-slate-900 border-slate-500 rounded focus:ring-amber-500" onchange="checkFormReady()">
+        <span class="text-sm text-slate-200">${s.label}</span>
+      </label>
+    `).join('');
+    
+    checkFormReady();
   }
 
-  // ─── SUBMIT ANSWER ───────────────────────────────────────────
-  function submitAnswer(timeout = false) {
-    if (state.gameOver) return;
-    state.gameOver = true;
-    clearInterval(state.timerInterval);
-
-    // Calculate bonus
-    const conclusionText = document.getElementById('conclusion-text').value.trim();
-    const analysisText = document.getElementById('analysis-links').value.trim() + document.getElementById('analysis-cause').value.trim();
-
-    // Check suspect
-    const suspect = suspects.find(s => s.id === state.selectedSuspect);
-    const correct = suspect && suspect.correct;
-    if (correct) state.score += 50;
-
-    // Analysis bonus
-    if (analysisText.length > 30) state.score += 20;
-
-    // Time bonus
-    const minutesLeft = Math.floor(state.timerSeconds / 60);
-    state.score += minutesLeft * 5;
-
-    showScreen('screen-reveal');
-    renderReveal(correct, conclusionText, timeout);
-    launchConfetti();
-  }
-
-  function renderReveal(correct, conclusionText, timeout) {
-    const card = document.getElementById('result-card');
-    const stars = state.score >= 100 ? 3 : state.score >= 60 ? 2 : 1;
-    const starsHtml = '⭐'.repeat(stars) + '☆'.repeat(3 - stars);
-
-    card.style.cssText = `background: linear-gradient(135deg, rgba(245,158,11,0.15), rgba(217,119,6,0.1)); border: 2px solid rgba(245,158,11,0.4);`;
-    card.innerHTML = `
-      <p class="font-bold text-lg mb-1" style="color: var(--foreground);">${state.teamName}</p>
-      <div class="text-3xl mb-2 star-spin">${starsHtml}</div>
-      <p class="text-5xl font-bold mb-2" style="color: #f59e0b;">${state.score}</p>
-      <p class="text-sm" style="color: var(--muted-foreground);">คะแนนรวม</p>
-      ${correct ? '<div class="mt-3 inline-block px-4 py-1 rounded-full text-sm font-bold" style="background: rgba(16,185,129,0.2); color: #10b981; border: 1px solid #10b981;">✅ ระบุสาเหตุได้ถูกต้อง!</div>' : '<div class="mt-3 inline-block px-4 py-1 rounded-full text-sm font-bold" style="background: rgba(239,68,68,0.1); color: #ef4444; border: 1px solid rgba(239,68,68,0.3);">❌ สาเหตุยังไม่ถูกต้อง</div>'}
-    `;
-
-    document.getElementById('review-conclusion').textContent = conclusionText || '(ไม่ได้เขียนสรุป)';
-  }
-
-  // ─── CONFETTI ────────────────────────────────────────────────
-  function launchConfetti() {
-    const colors = ['#f59e0b', '#10b981', '#3b82f6', '#ef4444', '#8b5cf6'];
-    for (let i = 0; i < 50; i++) {
-      setTimeout(() => {
-        const el = document.createElement('div');
-        el.className = 'confetti-piece';
-        el.style.cssText = `
-          left: ${Math.random() * 100}vw;
-          background: ${colors[Math.floor(Math.random() * colors.length)]};
-          animation-delay: ${Math.random() * 0.5}s;
-          animation-duration: ${2 + Math.random() * 2}s;
-        `;
-        document.body.appendChild(el);
-        setTimeout(() => el.remove(), 4000);
-      }, i * 30);
+  function checkFormReady() {
+    const checked = document.querySelectorAll('input[name="suspect"]:checked').length;
+    const btn = document.getElementById('submit-btn');
+    const warn = document.getElementById('submit-warn');
+    
+    if(state.clues.length >= 2 && checked > 0) {
+      btn.disabled = false;
+      btn.classList.remove('opacity-50', 'cursor-not-allowed');
+      warn.style.display = 'none';
+    } else {
+      btn.disabled = true;
+      btn.classList.add('opacity-50', 'cursor-not-allowed');
+      warn.style.display = 'block';
     }
   }
 
-  // ─── PLAY AGAIN ──────────────────────────────────────────────
-  function playAgain() {
-    state = {
-      teamName: '',
-      memberCount: 4,
-      score: 0,
-      collectedEvidence: new Set(),
-      timerSeconds: 25 * 60,
-      timerInterval: null,
-      activeModal: null,
-      selectedSuspect: null,
-      gameStarted: false,
-      gameOver: false,
-    };
-    document.getElementById('team-name-input').value = '';
-    document.getElementById('conclusion-text').value = '';
-    document.getElementById('analysis-links').value = '';
-    document.getElementById('analysis-cause').value = '';
-    document.querySelectorAll('.member-btn').forEach(b => {
-      b.style.background = 'var(--accent)';
-      b.style.borderColor = 'var(--border)';
-      b.style.color = 'var(--foreground)';
+  function submitCase() {
+    if(!confirm('แน่ใจหรือไม่ว่าวิเคราะห์ครบถ้วนแล้ว? เมื่อส่งรายงานจะไม่สามารถแก้ไขได้!')) return;
+    
+    clearInterval(timerInterval);
+    state.finished = true;
+    
+    // Check answers
+    const checked = Array.from(document.querySelectorAll('input[name="suspect"]:checked')).map(cb => cb.value);
+    let correctCount = 0;
+    checked.forEach(val => {
+      const suspect = SUSPECTS.find(s => s.id === val);
+      if(suspect && suspect.correct) correctCount++;
+      else state.score -= 10; // penalty
     });
-    showScreen('screen-team');
+    
+    state.score += (correctCount * 30);
+    
+    // Time bonus
+    if(state.time > 0) state.score += Math.floor(state.time / 60) * 2;
+    
+    LocalDB.save('state', state);
+    
+    // Save to global simulated DB
+    let globalLb = LocalDB.load('global_lb', [
+      { name: 'ทีมอินทรี', score: 120 },
+      { name: 'ทีมมังกร', score: 85 }
+    ]);
+    globalLb.push({ name: state.teamName, score: state.score });
+    LocalDB.save('global_lb', globalLb);
+
+    showScreen('screen-result');
+    renderResult();
   }
 
-  // ─── CLOSE MODAL ON BACKDROP ─────────────────────────────────
-  document.getElementById('evidence-modal').addEventListener('click', function(e) {
-    if (e.target === this) closeModal();
-  });
+  // ─── RESULT & DB LEADERBOARD ───────────────────────────────
+  function renderResult() {
+    document.getElementById('result-title').textContent = `คดีปิด! ทีม ${state.teamName}`;
+    document.getElementById('result-emoji').textContent = state.score > 100 ? '🏆' : (state.score > 50 ? '👍' : '📝');
+    
+    const globalLb = LocalDB.load('global_lb', []).sort((a,b) => b.score - a.score);
+    const lbDiv = document.getElementById('leaderboard-list');
+    lbDiv.innerHTML = globalLb.map((t, index) => `
+      <div class="flex justify-between items-center p-3 rounded-lg ${t.name === state.teamName ? 'bg-amber-500/20 border border-amber-500' : 'bg-slate-800'}">
+        <div class="flex items-center gap-3">
+          <span class="font-bold ${index===0 ? 'text-yellow-400' : (index===1 ? 'text-slate-300' : 'text-amber-700')}">#${index+1}</span>
+          <span class="text-white font-prompt ${t.name === state.teamName ? 'font-bold' : ''}">${t.name} ${t.name === state.teamName ? '(ทีมคุณ)' : ''}</span>
+        </div>
+        <span class="font-mono font-bold text-lg text-amber-400">${t.score}</span>
+      </div>
+    `).join('');
+  }
 
-  // ─── INIT RENDERS ────────────────────────────────────────────
-  renderEvidenceGrid();
+  function resetGame() {
+    LocalDB.clear();
+    location.reload();
+  }
+
+  // Boot
+  init();
 </script>
 </body>
 </html>
